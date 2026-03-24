@@ -40,7 +40,7 @@
       </svg>
       <h1>Sight Words<br><span class="accent">Quiz</span></h1>
     </div>
-    <p class="tagline">Read the word, type it, earn screen time tickets.</p>
+    <p class="tagline">Read the word, say it, earn screen time tickets.</p>
 
     <div class="setup-section">
       <label class="field-label" for="level-select">Choose a level</label>
@@ -113,12 +113,20 @@
       </div>
     </div>
 
-    <!-- Step 2: Type the word -->
+    <!-- Step 2: Say the word -->
     <div id="quiz-type" class="quiz-step">
-      <p class="instruction-text">Now type the word:</p>
-      <div class="input-area">
-        <input type="text" id="word-input" class="word-input" autocomplete="off" autocapitalize="none" spellcheck="false" aria-label="Type the sight word">
-        <button class="btn-submit" id="btn-check">Check</button>
+      <p class="instruction-text">Now say the word:</p>
+      <div class="mic-area">
+        <button class="mic-btn" id="btn-mic" aria-label="Tap to speak">
+          <svg class="mic-icon" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="9" y="1" width="6" height="13" rx="3"/>
+            <path d="M19 10v1a7 7 0 0 1-14 0v-1"/>
+            <line x1="12" y1="19" x2="12" y2="23"/>
+            <line x1="8" y1="23" x2="16" y2="23"/>
+          </svg>
+        </button>
+        <p class="mic-status" id="mic-status">Tap the mic and say the word</p>
+        <div class="heard-word" id="heard-word"></div>
       </div>
       <div class="hint-area" id="hint-area">
         <button class="btn-hint" id="btn-hint">Show me a hint</button>

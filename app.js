@@ -15,8 +15,21 @@ let state = {
   tickets: 0,
   correctCount: 0,
   missed: [],
-  showDuration: 3000 // ms to show word
+  showDuration: 10 // seconds to show word
 };
+
+// ====== SPEECH RECOGNITION SETUP ======
+const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+let recognition = null;
+let isListening = false;
+
+if (SpeechRecognition) {
+  recognition = new SpeechRecognition();
+  recognition.continuous = false;
+  recognition.interimResults = true;
+  recognition.lang = 'en-US';
+  recognition.maxAlternatives = 5;
+}
 
 // ====== DOM REFS ======
 const $ = id => document.getElementById(id);
@@ -43,9 +56,9 @@ const quizResult = $('quiz-result');
 const wordDisplay = $('word-display');
 const countdownNumber = $('countdown-number');
 const ringCircle = $('ring-circle');
-const wordInput = $('word-input');
-const btnCheck = $('btn-check');
-const btnHint = $('btn-hint');
+const btnMic = $('btn-mic');
+const micStatus = $('mic-status');
+const heardWord = $('heard-word');
 const hintArea = $('hint-area');
 const resultIcon = $('result-icon');
 const resultMessage = $('result-message');
@@ -127,8 +140,9 @@ btnCountUp.addEventListener('click', () => {
 btnStart.addEventListener('click', startQuiz);
 
 // ====== QUIZ LOGIC ======
+let countdownInterval = null;
+
 function startQuiz() {
-  // Pick random words
   const pool = WORDS[state.level] || WORDS.prek;
   state.words = shuffleArray(pool).slice(0, state.wordCount);
   state.currentIndex = 0;
@@ -146,57 +160,171 @@ function showWord() {
   wordDisplay.textContent = word;
   showQuizStep(quizShow);
 
-  // Countdown timer
-  let count = 3;
+  // 10-second countdown
+  let count = state.showDuration;
   countdownNumber.textContent = count;
   const circumference = 276.46;
+  ringCircle.style.transition = 'none';
   ringCircle.style.strokeDashoffset = '0';
 
-  const interval = setInterval(() => {
+  // Force reflow so the reset takes effect
+  ringCircle.getBoundingClientRect();
+  ringCircle.style.transition = 'stroke-dashoffset 1s linear';
+
+  if (countdownInterval) clearInterval(countdownInterval);
+
+  countdownInterval = setInterval(() => {
     count--;
     if (count > 0) {
       countdownNumber.textContent = count;
-      ringCircle.style.strokeDashoffset = ((3 - count) / 3) * circumference;
+      ringCircle.style.strokeDashoffset = ((state.showDuration - count) / state.showDuration) * circumference;
     } else {
-      clearInterval(interval);
+      clearInterval(countdownInterval);
+      countdownInterval = null;
       ringCircle.style.strokeDashoffset = circumference;
-      // Switch to type mode
+      // Switch to speak mode
       wordDisplay.textContent = '';
-      showQuizStep(quizType);
-      wordInput.value = '';
-      wordInput.className = 'word-input';
-      hintArea.innerHTML = '<button class="btn-hint" id="btn-hint">Show me a hint</button>';
-      document.getElementById('btn-hint').addEventListener('click', showHint);
-      wordInput.focus();
+      switchToSpeakStep();
     }
   }, 1000);
 }
 
+function switchToSpeakStep() {
+  showQuizStep(quizType);
+  btnMic.className = 'mic-btn';
+  micStatus.textContent = 'Tap the mic and say the word';
+  micStatus.className = 'mic-status';
+  heardWord.textContent = '';
+  hintArea.innerHTML = '<button class="btn-hint" id="btn-hint">Show me a hint</button>';
+  document.getElementById('btn-hint').addEventListener('click', showHint);
+}
+
 function showHint() {
   const word = state.words[state.currentIndex];
-  // Show first letter + underscores
   const hint = word[0] + ' ' + '_ '.repeat(word.length - 1).trim();
   hintArea.innerHTML = `<span class="hint-text">${hint}</span>`;
 }
 
-function checkAnswer() {
-  const word = state.words[state.currentIndex];
-  const answer = wordInput.value.trim().toLowerCase();
-  const correct = answer === word.toLowerCase();
+// ====== SPEECH RECOGNITION ======
+function startListening() {
+  if (!recognition) {
+    micStatus.textContent = 'Speech not supported in this browser';
+    micStatus.className = 'mic-status error';
+    return;
+  }
 
-  if (correct) {
-    wordInput.className = 'word-input correct';
+  if (isListening) {
+    recognition.stop();
+    return;
+  }
+
+  heardWord.textContent = '';
+  btnMic.classList.add('listening');
+  micStatus.textContent = 'Listening...';
+  isListening = true;
+
+  try {
+    recognition.start();
+  } catch (e) {
+    // Already started - stop and restart
+    recognition.stop();
+    setTimeout(() => {
+      try { recognition.start(); } catch (e2) { /* ignore */ }
+    }, 200);
+  }
+}
+
+function stopListening() {
+  isListening = false;
+  btnMic.classList.remove('listening');
+  if (recognition) {
+    try { recognition.stop(); } catch (e) { /* ignore */ }
+  }
+}
+
+if (recognition) {
+  recognition.onresult = (event) => {
+    const word = state.words[state.currentIndex];
+    let bestMatch = '';
+    let isCorrect = false;
+
+    // Check all results and alternatives for a match
+    for (let i = 0; i < event.results.length; i++) {
+      const result = event.results[i];
+      for (let j = 0; j < result.length; j++) {
+        const transcript = result[j].transcript.trim().toLowerCase();
+        // Show the first (most likely) transcript
+        if (i === event.results.length - 1 && j === 0) {
+          bestMatch = transcript;
+        }
+        // Check if any alternative matches
+        if (normalizeWord(transcript) === normalizeWord(word)) {
+          isCorrect = true;
+          bestMatch = transcript;
+        }
+      }
+    }
+
+    heardWord.textContent = `"${bestMatch}"`;
+
+    // Only evaluate on final result
+    if (event.results[event.results.length - 1].isFinal) {
+      stopListening();
+      evaluateAnswer(bestMatch, isCorrect);
+    }
+  };
+
+  recognition.onerror = (event) => {
+    stopListening();
+    if (event.error === 'no-speech') {
+      micStatus.textContent = 'No speech detected — try again';
+    } else if (event.error === 'not-allowed') {
+      micStatus.textContent = 'Microphone access needed — check permissions';
+      micStatus.className = 'mic-status error';
+    } else {
+      micStatus.textContent = 'Try again — tap the mic';
+    }
+  };
+
+  recognition.onend = () => {
+    // Only reset if we didn't already evaluate
+    if (isListening) {
+      isListening = false;
+      btnMic.classList.remove('listening');
+    }
+  };
+}
+
+// Normalize words for comparison (handles letter names like "I" → "i")
+function normalizeWord(w) {
+  return w.trim().toLowerCase().replace(/[^a-z]/g, '');
+}
+
+function evaluateAnswer(heard, isCorrect) {
+  const word = state.words[state.currentIndex];
+
+  // Double-check match in case we didn't catch it in alternatives
+  if (!isCorrect) {
+    isCorrect = normalizeWord(heard) === normalizeWord(word);
+  }
+
+  if (isCorrect) {
+    btnMic.className = 'mic-btn correct-flash';
+    micStatus.textContent = '';
     state.correctCount++;
     state.tickets++;
   } else {
-    wordInput.className = 'word-input wrong';
+    btnMic.className = 'mic-btn wrong-flash';
+    micStatus.textContent = '';
     state.missed.push(word);
   }
 
-  // Show result after brief delay
-  setTimeout(() => showResult(correct, word), 500);
+  setTimeout(() => showResult(isCorrect, word), 600);
 }
 
+btnMic.addEventListener('click', startListening);
+
+// ====== RESULT DISPLAY ======
 function showResult(correct, word) {
   showQuizStep(quizResult);
 
@@ -215,18 +343,12 @@ function showResult(correct, word) {
     ticketEarned.className = 'ticket-earned';
   }
 
-  // Update button text for last word
   if (state.currentIndex >= state.words.length - 1) {
     btnNext.textContent = 'See Results';
   } else {
     btnNext.textContent = 'Next Word';
   }
 }
-
-btnCheck.addEventListener('click', checkAnswer);
-wordInput.addEventListener('keydown', (e) => {
-  if (e.key === 'Enter') checkAnswer();
-});
 
 btnNext.addEventListener('click', () => {
   state.currentIndex++;
@@ -274,7 +396,6 @@ function showSummary() {
     screenTimeBox.style.display = 'none';
   }
 
-  // Missed words
   if (state.missed.length > 0) {
     missedSection.style.display = '';
     missedList.innerHTML = state.missed.map(w => `<span class="missed-word">${w}</span>`).join('');
@@ -283,7 +404,6 @@ function showSummary() {
     launchConfetti();
   }
 
-  // Update progress bar to full
   progressBar.style.width = '100%';
 }
 
@@ -304,7 +424,7 @@ let timerRemaining = 0;
 let timerTotal = 0;
 
 btnStartTimer.addEventListener('click', () => {
-  timerTotal = state.tickets * 2 * 60; // seconds
+  timerTotal = state.tickets * 2 * 60;
   timerRemaining = timerTotal;
   timerOverlay.classList.add('active');
   timerStatus.textContent = 'Screen time remaining';
@@ -325,8 +445,6 @@ function startTimerCountdown() {
       timerStatus.textContent = 'Time\'s up!';
       timerStatus.className = 'timer-status done';
       btnTimerDone.textContent = 'Done';
-
-      // Flash the timer ring
       timerRingFill.style.stroke = 'var(--color-error)';
     }
   }, 1000);
@@ -338,7 +456,6 @@ function updateTimerDisplay() {
   timerMinutes.textContent = String(min).padStart(2, '0');
   timerSeconds.textContent = String(sec).padStart(2, '0');
 
-  // Update ring
   const circumference = 565.49;
   const offset = ((timerTotal - timerRemaining) / timerTotal) * circumference;
   timerRingFill.style.strokeDashoffset = offset;
@@ -379,9 +496,7 @@ function launchConfetti() {
   }
 }
 
-// ====== DARK MODE TOGGLE ======
-// Since this is a kids' quiz app, we default to light mode always
-// but still respect parent preference
+// ====== DARK MODE ======
 (function() {
   const html = document.documentElement;
   const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
