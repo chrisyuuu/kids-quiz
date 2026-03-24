@@ -15,7 +15,8 @@ let state = {
   tickets: 0,
   correctCount: 0,
   missed: [],
-  showDuration: 10 // seconds to show word
+  showDuration: 10,
+  micAvailable: false // set after permission check
 };
 
 // ====== SPEECH RECOGNITION SETUP ======
@@ -34,19 +35,17 @@ if (SpeechRecognition) {
 // ====== DOM REFS ======
 const $ = id => document.getElementById(id);
 
-// Screens
 const screenWelcome = $('screen-welcome');
 const screenQuiz = $('screen-quiz');
 const screenSummary = $('screen-summary');
 
-// Welcome elements
 const levelCards = document.querySelectorAll('.level-card');
 const wordCountEl = $('word-count');
 const btnCountDown = $('count-down');
 const btnCountUp = $('count-up');
 const btnStart = $('btn-start');
+const micPermBanner = $('mic-perm-banner');
 
-// Quiz elements
 const progressText = $('progress-text');
 const ticketDisplay = $('ticket-display');
 const progressBar = $('progress-bar');
@@ -66,7 +65,11 @@ const resultWord = $('result-word');
 const ticketEarned = $('ticket-earned');
 const btnNext = $('btn-next');
 
-// Summary elements
+// Fallback typing elements
+const fallbackTyping = $('fallback-typing');
+const wordInput = $('word-input');
+const btnCheck = $('btn-check');
+
 const summaryStars = $('summary-stars');
 const summaryTitle = $('summary-title');
 const summarySubtitle = $('summary-subtitle');
@@ -114,6 +117,52 @@ function updateProgress() {
   progressBar.style.width = pct + '%';
 }
 
+// ====== MICROPHONE PERMISSION ======
+async function requestMicPermission() {
+  // First check if SpeechRecognition is even available
+  if (!recognition) {
+    return false;
+  }
+
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    // Got permission — stop the stream immediately (we just needed the permission)
+    stream.getTracks().forEach(t => t.stop());
+    return true;
+  } catch (err) {
+    console.log('Mic permission denied or unavailable:', err.name, err.message);
+    return false;
+  }
+}
+
+function showMicBanner(type) {
+  if (!micPermBanner) return;
+
+  if (type === 'denied') {
+    micPermBanner.innerHTML = `
+      <div class="perm-banner denied">
+        <span class="perm-icon">🎤</span>
+        <div class="perm-text">
+          <strong>Microphone blocked</strong>
+          <p>Tap the lock/settings icon in your browser's address bar and allow microphone access, then reload. Using keyboard mode for now.</p>
+        </div>
+      </div>`;
+    micPermBanner.style.display = '';
+  } else if (type === 'unsupported') {
+    micPermBanner.innerHTML = `
+      <div class="perm-banner denied">
+        <span class="perm-icon">🎤</span>
+        <div class="perm-text">
+          <strong>Speech not available</strong>
+          <p>This browser doesn't support speech recognition. Try Chrome or Safari. Using keyboard mode for now.</p>
+        </div>
+      </div>`;
+    micPermBanner.style.display = '';
+  } else {
+    micPermBanner.style.display = 'none';
+  }
+}
+
 // ====== WELCOME SCREEN LOGIC ======
 levelCards.forEach(card => {
   card.addEventListener('click', () => {
@@ -137,7 +186,30 @@ btnCountUp.addEventListener('click', () => {
   wordCountEl.textContent = state.wordCount;
 });
 
-btnStart.addEventListener('click', startQuiz);
+btnStart.addEventListener('click', async () => {
+  // Show loading state on button
+  btnStart.disabled = true;
+  btnStart.innerHTML = 'Setting up mic...';
+
+  // Request mic permission
+  state.micAvailable = await requestMicPermission();
+
+  if (!state.micAvailable) {
+    if (!recognition) {
+      showMicBanner('unsupported');
+    } else {
+      showMicBanner('denied');
+    }
+  } else {
+    showMicBanner('ok');
+  }
+
+  // Restore button
+  btnStart.disabled = false;
+  btnStart.innerHTML = 'Start Quiz <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>';
+
+  startQuiz();
+});
 
 // ====== QUIZ LOGIC ======
 let countdownInterval = null;
@@ -160,14 +232,11 @@ function showWord() {
   wordDisplay.textContent = word;
   showQuizStep(quizShow);
 
-  // 10-second countdown
   let count = state.showDuration;
   countdownNumber.textContent = count;
   const circumference = 276.46;
   ringCircle.style.transition = 'none';
   ringCircle.style.strokeDashoffset = '0';
-
-  // Force reflow so the reset takes effect
   ringCircle.getBoundingClientRect();
   ringCircle.style.transition = 'stroke-dashoffset 1s linear';
 
@@ -182,19 +251,38 @@ function showWord() {
       clearInterval(countdownInterval);
       countdownInterval = null;
       ringCircle.style.strokeDashoffset = circumference;
-      // Switch to speak mode
       wordDisplay.textContent = '';
-      switchToSpeakStep();
+      switchToAnswerStep();
     }
   }, 1000);
 }
 
-function switchToSpeakStep() {
+function switchToAnswerStep() {
   showQuizStep(quizType);
-  btnMic.className = 'mic-btn';
-  micStatus.textContent = 'Tap the mic and say the word';
-  micStatus.className = 'mic-status';
-  heardWord.textContent = '';
+
+  if (state.micAvailable) {
+    // Mic mode
+    btnMic.style.display = '';
+    micStatus.style.display = '';
+    heardWord.style.display = '';
+    fallbackTyping.style.display = 'none';
+
+    btnMic.className = 'mic-btn';
+    micStatus.textContent = 'Tap the mic and say the word';
+    micStatus.className = 'mic-status';
+    heardWord.textContent = '';
+  } else {
+    // Keyboard fallback mode
+    btnMic.style.display = 'none';
+    micStatus.style.display = 'none';
+    heardWord.style.display = 'none';
+    fallbackTyping.style.display = '';
+
+    wordInput.value = '';
+    wordInput.className = 'word-input';
+    wordInput.focus();
+  }
+
   hintArea.innerHTML = '<button class="btn-hint" id="btn-hint">Show me a hint</button>';
   document.getElementById('btn-hint').addEventListener('click', showHint);
 }
@@ -207,11 +295,7 @@ function showHint() {
 
 // ====== SPEECH RECOGNITION ======
 function startListening() {
-  if (!recognition) {
-    micStatus.textContent = 'Speech not supported in this browser';
-    micStatus.className = 'mic-status error';
-    return;
-  }
+  if (!recognition || !state.micAvailable) return;
 
   if (isListening) {
     recognition.stop();
@@ -226,7 +310,6 @@ function startListening() {
   try {
     recognition.start();
   } catch (e) {
-    // Already started - stop and restart
     recognition.stop();
     setTimeout(() => {
       try { recognition.start(); } catch (e2) { /* ignore */ }
@@ -248,16 +331,13 @@ if (recognition) {
     let bestMatch = '';
     let isCorrect = false;
 
-    // Check all results and alternatives for a match
     for (let i = 0; i < event.results.length; i++) {
       const result = event.results[i];
       for (let j = 0; j < result.length; j++) {
         const transcript = result[j].transcript.trim().toLowerCase();
-        // Show the first (most likely) transcript
         if (i === event.results.length - 1 && j === 0) {
           bestMatch = transcript;
         }
-        // Check if any alternative matches
         if (normalizeWord(transcript) === normalizeWord(word)) {
           isCorrect = true;
           bestMatch = transcript;
@@ -267,7 +347,6 @@ if (recognition) {
 
     heardWord.textContent = `"${bestMatch}"`;
 
-    // Only evaluate on final result
     if (event.results[event.results.length - 1].isFinal) {
       stopListening();
       evaluateAnswer(bestMatch, isCorrect);
@@ -279,15 +358,16 @@ if (recognition) {
     if (event.error === 'no-speech') {
       micStatus.textContent = 'No speech detected — try again';
     } else if (event.error === 'not-allowed') {
-      micStatus.textContent = 'Microphone access needed — check permissions';
-      micStatus.className = 'mic-status error';
+      // Permission was revoked mid-session — switch to fallback
+      state.micAvailable = false;
+      micStatus.textContent = '';
+      switchToAnswerStep();
     } else {
       micStatus.textContent = 'Try again — tap the mic';
     }
   };
 
   recognition.onend = () => {
-    // Only reset if we didn't already evaluate
     if (isListening) {
       isListening = false;
       btnMic.classList.remove('listening');
@@ -295,7 +375,6 @@ if (recognition) {
   };
 }
 
-// Normalize words for comparison (handles letter names like "I" → "i")
 function normalizeWord(w) {
   return w.trim().toLowerCase().replace(/[^a-z]/g, '');
 }
@@ -303,7 +382,6 @@ function normalizeWord(w) {
 function evaluateAnswer(heard, isCorrect) {
   const word = state.words[state.currentIndex];
 
-  // Double-check match in case we didn't catch it in alternatives
   if (!isCorrect) {
     isCorrect = normalizeWord(heard) === normalizeWord(word);
   }
@@ -323,6 +401,29 @@ function evaluateAnswer(heard, isCorrect) {
 }
 
 btnMic.addEventListener('click', startListening);
+
+// ====== KEYBOARD FALLBACK ======
+function checkTypedAnswer() {
+  const word = state.words[state.currentIndex];
+  const answer = wordInput.value.trim().toLowerCase();
+  const correct = answer === word.toLowerCase();
+
+  if (correct) {
+    wordInput.className = 'word-input correct';
+    state.correctCount++;
+    state.tickets++;
+  } else {
+    wordInput.className = 'word-input wrong';
+    state.missed.push(word);
+  }
+
+  setTimeout(() => showResult(correct, word), 500);
+}
+
+btnCheck.addEventListener('click', checkTypedAnswer);
+wordInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') checkTypedAnswer();
+});
 
 // ====== RESULT DISPLAY ======
 function showResult(correct, word) {
