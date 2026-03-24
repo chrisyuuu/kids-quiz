@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<!--
+   ______                            __
+  / ____/___  ____ ___  ____  __  __/ /____  _____
+ / /   / __ \/ __ `__ \/ __ \/ / / / __/ _ \/ ___/
+/ /___/ /_/ / / / / / / /_/ / /_/ / /_/  __/ /
+\____/\____/_/ /_/ /_/ .___/\__,_/\__/\___/_/
+                    /_/
+        Created with Perplexity Computer
+        https://www.perplexity.ai/computer
+-->
+<meta name="generator" content="Perplexity Computer">
+<meta name="author" content="Perplexity Computer">
+<meta property="og:see_also" content="https://www.perplexity.ai/computer">
+<link rel="author" href="https://www.perplexity.ai/computer">
+
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sight Words Quiz</title>
+
+<link href="https://api.fontshare.com/v2/css?f[]=chillax@400,500,600,700&f[]=nunito@400,500,600,700&display=swap" rel="stylesheet">
+
+<link rel="stylesheet" href="./base.css">
+<link rel="stylesheet" href="./style.css">
+</head>
+<body>
+
+<!-- SCREEN: Welcome / Setup -->
+<main id="screen-welcome" class="screen active">
+  <div class="welcome-container">
+    <div class="logo-area">
+      <svg class="logo-icon" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg" aria-label="Sight Words Quiz logo">
+        <rect x="4" y="12" width="52" height="56" rx="6" stroke="currentColor" stroke-width="4"/>
+        <rect x="24" y="4" width="52" height="56" rx="6" fill="var(--color-bg)" stroke="currentColor" stroke-width="4"/>
+        <text x="50" y="38" text-anchor="middle" font-family="var(--font-display)" font-weight="700" font-size="22" fill="currentColor">Aa</text>
+        <circle cx="62" cy="52" r="14" fill="var(--color-gold)" stroke="var(--color-bg)" stroke-width="3"/>
+        <text x="62" y="57" text-anchor="middle" font-family="var(--font-display)" font-weight="700" font-size="14" fill="#fff">★</text>
+      </svg>
+      <h1>Sight Words<br><span class="accent">Quiz</span></h1>
+    </div>
+    <p class="tagline">Read the word, type it, earn screen time tickets.</p>
+
+    <div class="setup-section">
+      <label class="field-label" for="level-select">Choose a level</label>
+      <div class="level-cards" id="level-select" role="radiogroup" aria-label="Difficulty level">
+        <button class="level-card selected" role="radio" aria-checked="true" data-level="prek">
+          <span class="level-emoji">🌱</span>
+          <span class="level-name">Pre-K</span>
+          <span class="level-desc">the, a, is, it...</span>
+        </button>
+        <button class="level-card" role="radio" aria-checked="false" data-level="kinder">
+          <span class="level-emoji">🌻</span>
+          <span class="level-name">Kindergarten</span>
+          <span class="level-desc">said, have, like...</span>
+        </button>
+        <button class="level-card" role="radio" aria-checked="false" data-level="first">
+          <span class="level-emoji">🌳</span>
+          <span class="level-name">1st Grade</span>
+          <span class="level-desc">every, could, after...</span>
+        </button>
+        <button class="level-card" role="radio" aria-checked="false" data-level="second">
+          <span class="level-emoji">🏔️</span>
+          <span class="level-name">2nd Grade</span>
+          <span class="level-desc">because, always, which...</span>
+        </button>
+      </div>
+    </div>
+
+    <div class="setup-section">
+      <label class="field-label" for="word-count">Number of words</label>
+      <div class="stepper">
+        <button class="stepper-btn" id="count-down" aria-label="Decrease word count">−</button>
+        <span class="stepper-value" id="word-count">10</span>
+        <button class="stepper-btn" id="count-up" aria-label="Increase word count">+</button>
+      </div>
+    </div>
+
+    <button class="btn-primary" id="btn-start">
+      Start Quiz
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+    </button>
+  </div>
+</main>
+
+<!-- SCREEN: Quiz -->
+<main id="screen-quiz" class="screen">
+  <header class="quiz-header">
+    <div class="progress-info">
+      <span id="progress-text">1 / 10</span>
+      <div class="ticket-count">
+        <svg class="ticket-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M2 10h20"/><circle cx="12" cy="14" r="1.5" fill="currentColor"/></svg>
+        <span id="ticket-display">0</span>
+      </div>
+    </div>
+    <div class="progress-bar-track">
+      <div class="progress-bar-fill" id="progress-bar"></div>
+    </div>
+  </header>
+
+  <div class="quiz-body">
+    <!-- Step 1: Show the word -->
+    <div id="quiz-show" class="quiz-step active">
+      <p class="instruction-text">Read this word carefully:</p>
+      <div class="word-display" id="word-display"></div>
+      <div class="countdown-ring" id="countdown-ring">
+        <svg viewBox="0 0 100 100">
+          <circle class="ring-bg" cx="50" cy="50" r="44"/>
+          <circle class="ring-fill" cx="50" cy="50" r="44" id="ring-circle"/>
+        </svg>
+        <span class="countdown-number" id="countdown-number">3</span>
+      </div>
+    </div>
+
+    <!-- Step 2: Type the word -->
+    <div id="quiz-type" class="quiz-step">
+      <p class="instruction-text">Now type the word:</p>
+      <div class="input-area">
+        <input type="text" id="word-input" class="word-input" autocomplete="off" autocapitalize="none" spellcheck="false" aria-label="Type the sight word">
+        <button class="btn-submit" id="btn-check">Check</button>
+      </div>
+      <div class="hint-area" id="hint-area">
+        <button class="btn-hint" id="btn-hint">Show me a hint</button>
+      </div>
+    </div>
+
+    <!-- Step 3: Result feedback -->
+    <div id="quiz-result" class="quiz-step">
+      <div class="result-icon" id="result-icon"></div>
+      <p class="result-message" id="result-message"></p>
+      <p class="result-word" id="result-word"></p>
+      <div class="ticket-earned" id="ticket-earned">
+        <div class="ticket-animation">
+          <svg class="ticket-svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--color-gold)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M2 10h20"/><circle cx="12" cy="14" r="1.5" fill="var(--color-gold)"/></svg>
+          <span class="ticket-label">+1 Ticket = 2 min screen time</span>
+        </div>
+      </div>
+      <button class="btn-primary" id="btn-next">Next Word</button>
+    </div>
+  </div>
+</main>
+
+<!-- SCREEN: Summary -->
+<main id="screen-summary" class="screen">
+  <div class="summary-container">
+    <div class="summary-stars" id="summary-stars"></div>
+    <h2 class="summary-title" id="summary-title">Great Job!</h2>
+    <p class="summary-subtitle" id="summary-subtitle"></p>
+
+    <div class="summary-stats">
+      <div class="stat-card stat-correct">
+        <span class="stat-number" id="stat-correct">0</span>
+        <span class="stat-label">Correct</span>
+      </div>
+      <div class="stat-card stat-total">
+        <span class="stat-number" id="stat-total">0</span>
+        <span class="stat-label">Total</span>
+      </div>
+      <div class="stat-card stat-tickets">
+        <span class="stat-number" id="stat-tickets">0</span>
+        <span class="stat-label">Tickets</span>
+      </div>
+    </div>
+
+    <div class="screen-time-box" id="screen-time-box">
+      <h3>Screen Time Earned</h3>
+      <div class="time-display" id="time-display">0 minutes</div>
+      <button class="btn-timer" id="btn-start-timer">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+        Start Timer
+      </button>
+    </div>
+
+    <!-- Timer overlay -->
+    <div class="timer-overlay" id="timer-overlay">
+      <div class="timer-ring-container">
+        <svg class="timer-ring" viewBox="0 0 200 200">
+          <circle class="timer-ring-bg" cx="100" cy="100" r="90"/>
+          <circle class="timer-ring-fill" cx="100" cy="100" r="90" id="timer-ring-fill"/>
+        </svg>
+        <div class="timer-center">
+          <span class="timer-minutes" id="timer-minutes">00</span>
+          <span class="timer-sep">:</span>
+          <span class="timer-seconds" id="timer-seconds">00</span>
+        </div>
+      </div>
+      <p class="timer-status" id="timer-status">Screen time remaining</p>
+      <button class="btn-timer-done" id="btn-timer-done">End Timer</button>
+    </div>
+
+    <div class="missed-words" id="missed-words-section" style="display:none">
+      <h3>Words to Practice</h3>
+      <div class="missed-list" id="missed-list"></div>
+    </div>
+
+    <div class="summary-actions">
+      <button class="btn-primary" id="btn-play-again">Play Again</button>
+      <button class="btn-secondary" id="btn-change-level">Change Level</button>
+    </div>
+  </div>
+</main>
+
+<footer class="site-footer">
+  <a href="https://www.perplexity.ai/computer" target="_blank" rel="noopener noreferrer">Created with Perplexity Computer</a>
+</footer>
+
+<script src="./app.js"></script>
+</body>
+</html>
