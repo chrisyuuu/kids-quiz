@@ -18,7 +18,7 @@
 
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Sight Words Quiz</title>
+<title>Math Quiz</title>
 
 <link href="https://api.fontshare.com/v2/css?f[]=chillax@400,500,600,700&f[]=nunito@400,500,600,700&display=swap" rel="stylesheet">
 
@@ -31,16 +31,29 @@
 <main id="screen-welcome" class="screen active">
   <div class="welcome-container">
     <div class="logo-area">
-      <svg class="logo-icon" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg" aria-label="Sight Words Quiz logo">
-        <rect x="4" y="12" width="52" height="56" rx="6" stroke="currentColor" stroke-width="4"/>
-        <rect x="24" y="4" width="52" height="56" rx="6" fill="var(--color-bg)" stroke="currentColor" stroke-width="4"/>
-        <text x="50" y="38" text-anchor="middle" font-family="var(--font-display)" font-weight="700" font-size="22" fill="currentColor">Aa</text>
-        <circle cx="62" cy="52" r="14" fill="var(--color-gold)" stroke="var(--color-bg)" stroke-width="3"/>
-        <text x="62" y="57" text-anchor="middle" font-family="var(--font-display)" font-weight="700" font-size="14" fill="#fff">★</text>
+      <svg class="logo-icon" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg" aria-label="Math Quiz logo">
+        <!-- Calculator body -->
+        <rect x="12" y="6" width="56" height="68" rx="8" stroke="currentColor" stroke-width="4"/>
+        <!-- Screen -->
+        <rect x="20" y="14" width="40" height="16" rx="4" fill="var(--color-primary-light)" stroke="currentColor" stroke-width="3"/>
+        <!-- Display text -->
+        <text x="40" y="27" text-anchor="middle" font-family="var(--font-display)" font-weight="700" font-size="12" fill="currentColor">1+2</text>
+        <!-- Button grid -->
+        <rect x="20" y="38" width="11" height="9" rx="2.5" fill="currentColor" opacity="0.15"/>
+        <rect x="34.5" y="38" width="11" height="9" rx="2.5" fill="currentColor" opacity="0.15"/>
+        <rect x="49" y="38" width="11" height="9" rx="2.5" fill="currentColor" opacity="0.15"/>
+        <rect x="20" y="51" width="11" height="9" rx="2.5" fill="currentColor" opacity="0.15"/>
+        <rect x="34.5" y="51" width="11" height="9" rx="2.5" fill="currentColor" opacity="0.15"/>
+        <rect x="49" y="51" width="11" height="9" rx="2.5" fill="currentColor" opacity="0.15"/>
+        <rect x="20" y="64" width="25.5" height="9" rx="2.5" fill="currentColor" opacity="0.15"/>
+        <rect x="49" y="64" width="11" height="9" rx="2.5" fill="var(--color-gold)"/>
+        <!-- Star badge -->
+        <circle cx="62" cy="14" r="11" fill="var(--color-gold)" stroke="var(--color-bg)" stroke-width="3"/>
+        <text x="62" y="18" text-anchor="middle" font-family="var(--font-display)" font-weight="700" font-size="11" fill="#fff">★</text>
       </svg>
-      <h1>Sight Words<br><span class="accent">Quiz</span></h1>
+      <h1>Math<br><span class="accent">Quiz</span></h1>
     </div>
-    <p class="tagline">Read the word, type it, earn screen time tickets.</p>
+    <p class="tagline">Solve problems, earn screen time tickets.</p>
 
     <div class="setup-section">
       <label class="field-label" for="level-select">Choose a level</label>
@@ -48,32 +61,32 @@
         <button class="level-card selected" role="radio" aria-checked="true" data-level="prek">
           <span class="level-emoji">🌱</span>
           <span class="level-name">Pre-K</span>
-          <span class="level-desc">the, a, is, it...</span>
+          <span class="level-desc">Addition 1–5</span>
         </button>
         <button class="level-card" role="radio" aria-checked="false" data-level="kinder">
           <span class="level-emoji">🌻</span>
           <span class="level-name">Kindergarten</span>
-          <span class="level-desc">said, have, like...</span>
+          <span class="level-desc">Add & Subtract 1–10</span>
         </button>
         <button class="level-card" role="radio" aria-checked="false" data-level="first">
           <span class="level-emoji">🌳</span>
           <span class="level-name">1st Grade</span>
-          <span class="level-desc">every, could, after...</span>
+          <span class="level-desc">+, −, × up to 12</span>
         </button>
         <button class="level-card" role="radio" aria-checked="false" data-level="second">
           <span class="level-emoji">🏔️</span>
           <span class="level-name">2nd Grade</span>
-          <span class="level-desc">because, always, which...</span>
+          <span class="level-desc">+, −, ×, ÷ up to 20</span>
         </button>
       </div>
     </div>
 
     <div class="setup-section">
-      <label class="field-label" for="word-count">Number of words</label>
+      <label class="field-label" for="word-count">Number of problems</label>
       <div class="stepper">
-        <button class="stepper-btn" id="count-down" aria-label="Decrease word count">−</button>
+        <button class="stepper-btn" id="count-down" aria-label="Decrease problem count">−</button>
         <span class="stepper-value" id="word-count">10</span>
-        <button class="stepper-btn" id="count-up" aria-label="Increase word count">+</button>
+        <button class="stepper-btn" id="count-up" aria-label="Increase problem count">+</button>
       </div>
     </div>
 
@@ -100,43 +113,29 @@
   </header>
 
   <div class="quiz-body">
-    <!-- Step 1: Show the word -->
-    <div id="quiz-show" class="quiz-step active">
-      <p class="instruction-text">Read this word carefully:</p>
-      <div class="word-display" id="word-display"></div>
-      <div class="countdown-ring" id="countdown-ring">
-        <svg viewBox="0 0 100 100">
-          <circle class="ring-bg" cx="50" cy="50" r="44"/>
-          <circle class="ring-fill" cx="50" cy="50" r="44" id="ring-circle"/>
-        </svg>
-        <span class="countdown-number" id="countdown-number">3</span>
-      </div>
-    </div>
-
-    <!-- Step 2: Type the word -->
-    <div id="quiz-type" class="quiz-step">
-      <p class="instruction-text">Now type the word:</p>
+    <!-- Step 1: Solve the problem -->
+    <div id="quiz-solve" class="quiz-step active">
+      <p class="instruction-text">Solve this problem:</p>
+      <div class="problem-display" id="problem-display">3 + 2 = ?</div>
       <div class="type-area">
-        <input type="text" id="word-input" class="word-input" autocomplete="off" autocapitalize="none" spellcheck="false" aria-label="Type the sight word" placeholder="Type the word...">
+        <input type="number" id="answer-input" class="answer-input" inputmode="numeric" pattern="[0-9]*" autocomplete="off" aria-label="Type your answer" placeholder="?">
         <button class="btn-submit" id="btn-check">Check</button>
       </div>
-      <div class="hint-area" id="hint-area">
-        <button class="btn-hint" id="btn-hint">Show me a hint</button>
-      </div>
+      <div class="hint-area" id="hint-area"></div>
     </div>
 
-    <!-- Step 3: Result feedback -->
+    <!-- Step 2: Result feedback -->
     <div id="quiz-result" class="quiz-step">
       <div class="result-icon" id="result-icon"></div>
       <p class="result-message" id="result-message"></p>
-      <p class="result-word" id="result-word"></p>
+      <p class="result-detail" id="result-detail"></p>
       <div class="ticket-earned" id="ticket-earned">
         <div class="ticket-animation">
           <svg class="ticket-svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--color-gold)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M2 10h20"/><circle cx="12" cy="14" r="1.5" fill="var(--color-gold)"/></svg>
           <span class="ticket-label">+1 Ticket = 2 min screen time</span>
         </div>
       </div>
-      <button class="btn-primary" id="btn-next">Next Word</button>
+      <button class="btn-primary" id="btn-next">Next Problem</button>
     </div>
   </div>
 </main>
@@ -190,7 +189,7 @@
     </div>
 
     <div class="missed-words" id="missed-words-section" style="display:none">
-      <h3>Words to Practice</h3>
+      <h3>Problems to Practice</h3>
       <div class="missed-list" id="missed-list"></div>
     </div>
 

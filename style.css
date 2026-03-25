@@ -414,52 +414,22 @@ body {
   font-weight: 500;
 }
 
-.word-display {
+/* Math problem display */
+.problem-display {
   font-family: var(--font-display);
   font-weight: 700;
   font-size: var(--text-3xl);
   color: var(--color-text);
-  padding: var(--space-6);
-  min-height: 100px;
+  padding: var(--space-6) var(--space-4);
+  min-height: 80px;
   display: grid;
   place-items: center;
-  letter-spacing: 0.02em;
-}
-
-/* Countdown ring */
-.countdown-ring {
-  position: relative;
-  width: 80px;
-  height: 80px;
-}
-.countdown-ring svg {
+  letter-spacing: 0.04em;
+  background: var(--color-surface);
+  border: 2px solid var(--color-border);
+  border-radius: var(--radius-xl);
   width: 100%;
-  height: 100%;
-  transform: rotate(-90deg);
-}
-.ring-bg {
-  fill: none;
-  stroke: var(--color-surface-offset);
-  stroke-width: 6;
-}
-.ring-fill {
-  fill: none;
-  stroke: var(--color-primary);
-  stroke-width: 6;
-  stroke-dasharray: 276.46;
-  stroke-dashoffset: 0;
-  stroke-linecap: round;
-  transition: stroke-dashoffset 1s linear;
-}
-.countdown-number {
-  position: absolute;
-  inset: 0;
-  display: grid;
-  place-items: center;
-  font-family: var(--font-display);
-  font-weight: 700;
-  font-size: var(--text-xl);
-  color: var(--color-primary);
+  max-width: 360px;
 }
 
 /* Typing area */
@@ -469,7 +439,7 @@ body {
   width: 100%;
   max-width: 360px;
 }
-.word-input {
+.answer-input {
   flex: 1;
   padding: var(--space-3) var(--space-4);
   font-family: var(--font-display);
@@ -481,17 +451,23 @@ body {
   border-radius: var(--radius-lg);
   color: var(--color-text);
   min-height: 56px;
+  -moz-appearance: textfield;
 }
-.word-input:focus {
+.answer-input::-webkit-outer-spin-button,
+.answer-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+.answer-input:focus {
   border-color: var(--color-primary);
   box-shadow: var(--shadow-glow);
   outline: none;
 }
-.word-input.correct {
+.answer-input.correct {
   border-color: var(--color-success);
   box-shadow: 0 0 0 4px rgba(52, 168, 83, 0.15);
 }
-.word-input.wrong {
+.answer-input.wrong {
   border-color: var(--color-error);
   box-shadow: 0 0 0 4px rgba(232, 69, 60, 0.15);
   animation: shake 400ms ease-out;
@@ -554,7 +530,7 @@ body {
 .result-message.correct { color: var(--color-success); }
 .result-message.wrong { color: var(--color-error); }
 
-.result-word {
+.result-detail {
   font-family: var(--font-display);
   font-weight: 600;
   font-size: var(--text-lg);
@@ -870,7 +846,7 @@ body {
   body { padding: var(--space-3); }
   .level-cards { grid-template-columns: 1fr 1fr; gap: var(--space-2); }
   .level-card { padding: var(--space-3) var(--space-2); }
-  .word-display { font-size: var(--text-2xl); }
+  .problem-display { font-size: var(--text-2xl); }
   .type-area { flex-direction: column; }
   .btn-submit { width: 100%; }
 }

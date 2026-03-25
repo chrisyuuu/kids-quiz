@@ -1,21 +1,95 @@
-// ====== SIGHT WORD BANKS ======
-const WORDS = {
-  prek: ['the','a','I','is','it','in','my','to','and','go','me','no','up','at','we','on','an','do','he','so','am','be','if','of','or','us','can','see','you','not','big','run','red','one','two','all','had','has','his','her','was','are','but','did','get','him','let','new','now','old','our','out','put','ran','say','she','too','yes','eat','hot','sit','top','fun','pet','hug','bed','cup','hat','pig','dog','cat','map','sun','bus','box','six','ten'],
-  kinder: ['said','have','like','come','look','they','play','down','make','help','good','this','that','with','what','from','some','then','them','will','very','when','just','know','into','your','been','here','many','over','only','after','back','call','came','could','each','find','first','give','going','great','hand','high','house','jump','last','long','made','much','must','name','never','next','open','part','pick','read','right','same','show','small','start','tell','turn','walk','want','well','which','work','write','year','about','again','also','away','because','before','best','both','bring','clean','does','done','draw','drink','every','fall','fast','four','full','goes','green','grow','hold','keep','kind','left','light','live','most','move','myself','off','once','own','pick','please','present','pull','round','shall','sing','sleep','stop','take','thank','think','today','together','try','upon','warm','wish','word','would'],
-  first: ['every','could','after','where','other','people','there','world','through','because','should','before','really','animal','always','around','another','between','change','different','earth','enough','follow','house','important','large','learn','letter','mother','picture','point','school','should','something','thought','together','under','watch','while','young','above','begin','below','body','carry','city','close','country','door','early','enough','example','family','father','girl','group','hand','head','idea','leave','life','list','might','money','night','often','order','paper','place','plant','river','second','sentence','sometimes','still','story','study','those','three','under','until','water','woman','young'],
-  second: ['because','always','which','would','about','their','people','other','could','write','there','these','number','water','first','after','where','through','different','before','should','between','another','around','again','world','important','something','thought','together','every','change','really','above','begin','below','carry','close','country','early','enough','example','family','father','group','leave','might','often','order','paper','place','second','sentence','sometimes','story','study','until','young','across','against','almost','already','among','answer','certain','complete','contain','cover','describe','direct','during','eight','either','except','happen','heard','instead','known','language','measure','minute','moment','morning','notice','passed','perhaps','picture','problem','product','question','reason','remember','several','simple','special','strong','sudden','surface','toward','travel','voice','weather','whether','whole']
+// ====== MATH PROBLEM GENERATION ======
+
+// Grade-level configs: what operations and number ranges are available
+const LEVELS = {
+  prek: {
+    name: 'Pre-K',
+    operations: ['+'],
+    range: [1, 5],       // numbers 1–5
+    resultMax: 10
+  },
+  kinder: {
+    name: 'Kindergarten',
+    operations: ['+', '−'],
+    range: [1, 10],
+    resultMax: 20
+  },
+  first: {
+    name: '1st Grade',
+    operations: ['+', '−', '×'],
+    range: [1, 12],
+    multRange: [1, 5],   // multiplication kept simpler
+    resultMax: 30
+  },
+  second: {
+    name: '2nd Grade',
+    operations: ['+', '−', '×', '÷'],
+    range: [1, 20],
+    multRange: [1, 12],
+    resultMax: 50
+  }
 };
+
+function generateProblem(level) {
+  const cfg = LEVELS[level];
+  const op = cfg.operations[Math.floor(Math.random() * cfg.operations.length)];
+  let a, b, answer, display;
+
+  switch (op) {
+    case '+': {
+      a = randInt(cfg.range[0], cfg.range[1]);
+      b = randInt(cfg.range[0], cfg.range[1]);
+      // keep result within max
+      if (a + b > cfg.resultMax) {
+        b = randInt(1, cfg.resultMax - a);
+      }
+      answer = a + b;
+      display = `${a} + ${b}`;
+      break;
+    }
+    case '−': {
+      // ensure a >= b so no negatives
+      a = randInt(cfg.range[0] + 1, cfg.range[1]);
+      b = randInt(cfg.range[0], a);
+      answer = a - b;
+      display = `${a} − ${b}`;
+      break;
+    }
+    case '×': {
+      const mr = cfg.multRange || [1, 5];
+      a = randInt(mr[0], mr[1]);
+      b = randInt(mr[0], mr[1]);
+      answer = a * b;
+      display = `${a} × ${b}`;
+      break;
+    }
+    case '÷': {
+      // generate as multiplication then reverse
+      const dr = cfg.multRange || [1, 5];
+      b = randInt(dr[0], dr[1]);
+      answer = randInt(1, dr[1]);
+      a = b * answer; // always divides evenly
+      display = `${a} ÷ ${b}`;
+      break;
+    }
+  }
+
+  return { display, answer, operation: op };
+}
+
+function randInt(min, max) {
+  return Math.floor(Math.random() * (max - min + 1)) + min;
+}
 
 // ====== STATE ======
 let state = {
   level: 'prek',
-  wordCount: 10,
-  words: [],
+  problemCount: 10,
+  problems: [],
   currentIndex: 0,
   tickets: 0,
   correctCount: 0,
-  missed: [],
-  showDuration: 10 // seconds to show word
+  missed: [] // { display, correctAnswer, userAnswer }
 };
 
 // ====== DOM REFS ======
@@ -34,18 +108,15 @@ const btnStart = $('btn-start');
 const progressText = $('progress-text');
 const ticketDisplay = $('ticket-display');
 const progressBar = $('progress-bar');
-const quizShow = $('quiz-show');
-const quizType = $('quiz-type');
-const quizResult = $('quiz-result');
-const wordDisplay = $('word-display');
-const countdownNumber = $('countdown-number');
-const ringCircle = $('ring-circle');
-const wordInput = $('word-input');
+const problemDisplay = $('problem-display');
+const answerInput = $('answer-input');
 const btnCheck = $('btn-check');
 const hintArea = $('hint-area');
+const quizSolve = $('quiz-solve');
+const quizResult = $('quiz-result');
 const resultIcon = $('result-icon');
 const resultMessage = $('result-message');
-const resultWord = $('result-word');
+const resultDetail = $('result-detail');
 const ticketEarned = $('ticket-earned');
 const btnNext = $('btn-next');
 
@@ -76,23 +147,14 @@ function showScreen(screen) {
 }
 
 function showQuizStep(step) {
-  [quizShow, quizType, quizResult].forEach(s => s.classList.remove('active'));
+  [quizSolve, quizResult].forEach(s => s.classList.remove('active'));
   step.classList.add('active');
 }
 
-function shuffleArray(arr) {
-  const a = [...arr];
-  for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [a[i], a[j]] = [a[j], a[i]];
-  }
-  return a;
-}
-
 function updateProgress() {
-  progressText.textContent = `${state.currentIndex + 1} / ${state.words.length}`;
+  progressText.textContent = `${state.currentIndex + 1} / ${state.problems.length}`;
   ticketDisplay.textContent = state.tickets;
-  const pct = ((state.currentIndex) / state.words.length) * 100;
+  const pct = ((state.currentIndex) / state.problems.length) * 100;
   progressBar.style.width = pct + '%';
 }
 
@@ -110,23 +172,24 @@ levelCards.forEach(card => {
 });
 
 btnCountDown.addEventListener('click', () => {
-  state.wordCount = Math.max(5, state.wordCount - 5);
-  wordCountEl.textContent = state.wordCount;
+  state.problemCount = Math.max(5, state.problemCount - 5);
+  wordCountEl.textContent = state.problemCount;
 });
 
 btnCountUp.addEventListener('click', () => {
-  state.wordCount = Math.min(30, state.wordCount + 5);
-  wordCountEl.textContent = state.wordCount;
+  state.problemCount = Math.min(30, state.problemCount + 5);
+  wordCountEl.textContent = state.problemCount;
 });
 
 btnStart.addEventListener('click', startQuiz);
 
 // ====== QUIZ LOGIC ======
-let countdownInterval = null;
-
 function startQuiz() {
-  const pool = WORDS[state.level] || WORDS.prek;
-  state.words = shuffleArray(pool).slice(0, state.wordCount);
+  // Generate all problems upfront
+  state.problems = [];
+  for (let i = 0; i < state.problemCount; i++) {
+    state.problems.push(generateProblem(state.level));
+  }
   state.currentIndex = 0;
   state.tickets = 0;
   state.correctCount = 0;
@@ -134,111 +197,82 @@ function startQuiz() {
 
   showScreen(screenQuiz);
   updateProgress();
-  showWord();
+  showProblem();
 }
 
-function showWord() {
-  const word = state.words[state.currentIndex];
-  wordDisplay.textContent = word;
-  showQuizStep(quizShow);
-
-  // 10-second countdown
-  let count = state.showDuration;
-  countdownNumber.textContent = count;
-  const circumference = 276.46;
-  ringCircle.style.transition = 'none';
-  ringCircle.style.strokeDashoffset = '0';
-  ringCircle.getBoundingClientRect();
-  ringCircle.style.transition = 'stroke-dashoffset 1s linear';
-
-  if (countdownInterval) clearInterval(countdownInterval);
-
-  countdownInterval = setInterval(() => {
-    count--;
-    if (count > 0) {
-      countdownNumber.textContent = count;
-      ringCircle.style.strokeDashoffset = ((state.showDuration - count) / state.showDuration) * circumference;
-    } else {
-      clearInterval(countdownInterval);
-      countdownInterval = null;
-      ringCircle.style.strokeDashoffset = circumference;
-      wordDisplay.textContent = '';
-      switchToTypeStep();
-    }
-  }, 1000);
-}
-
-function switchToTypeStep() {
-  showQuizStep(quizType);
-  wordInput.value = '';
-  wordInput.className = 'word-input';
-  hintArea.innerHTML = '<button class="btn-hint" id="btn-hint">Show me a hint</button>';
-  document.getElementById('btn-hint').addEventListener('click', showHint);
-  wordInput.focus();
-}
-
-function showHint() {
-  const word = state.words[state.currentIndex];
-  const hint = word[0] + ' ' + '_ '.repeat(word.length - 1).trim();
-  hintArea.innerHTML = `<span class="hint-text">${hint}</span>`;
+function showProblem() {
+  const problem = state.problems[state.currentIndex];
+  problemDisplay.textContent = `${problem.display} = ?`;
+  showQuizStep(quizSolve);
+  answerInput.value = '';
+  answerInput.className = 'answer-input';
+  hintArea.innerHTML = '';
+  answerInput.focus();
 }
 
 // ====== CHECK ANSWER ======
 function checkAnswer() {
-  const word = state.words[state.currentIndex];
-  const answer = wordInput.value.trim().toLowerCase();
-  const correct = answer === word.toLowerCase();
+  const problem = state.problems[state.currentIndex];
+  const userAnswer = answerInput.value.trim();
+
+  if (userAnswer === '') return; // ignore empty
+
+  const correct = parseInt(userAnswer, 10) === problem.answer;
 
   if (correct) {
-    wordInput.className = 'word-input correct';
+    answerInput.className = 'answer-input correct';
     state.correctCount++;
     state.tickets++;
   } else {
-    wordInput.className = 'word-input wrong';
-    state.missed.push(word);
+    answerInput.className = 'answer-input wrong';
+    state.missed.push({
+      display: problem.display,
+      correctAnswer: problem.answer,
+      userAnswer: userAnswer
+    });
   }
 
-  setTimeout(() => showResult(correct, word), 500);
+  setTimeout(() => showResult(correct, problem), 400);
 }
 
 btnCheck.addEventListener('click', checkAnswer);
-wordInput.addEventListener('keydown', (e) => {
+answerInput.addEventListener('keydown', (e) => {
   if (e.key === 'Enter') checkAnswer();
 });
 
 // ====== RESULT DISPLAY ======
-function showResult(correct, word) {
+function showResult(correct, problem) {
   showQuizStep(quizResult);
 
   if (correct) {
     resultIcon.textContent = '🎉';
     resultMessage.textContent = 'Correct!';
     resultMessage.className = 'result-message correct';
-    resultWord.textContent = `"${word}"`;
+    resultDetail.textContent = `${problem.display} = ${problem.answer}`;
     ticketEarned.className = 'ticket-earned show';
     ticketDisplay.textContent = state.tickets;
   } else {
     resultIcon.textContent = '😊';
-    resultMessage.textContent = "Let's keep trying!";
+    resultMessage.textContent = "Not quite!";
     resultMessage.className = 'result-message wrong';
-    resultWord.textContent = `The word was "${word}"`;
+    resultDetail.textContent = `${problem.display} = ${problem.answer}`;
     ticketEarned.className = 'ticket-earned';
   }
 
-  if (state.currentIndex >= state.words.length - 1) {
+  if (state.currentIndex >= state.problems.length - 1) {
     btnNext.textContent = 'See Results';
   } else {
-    btnNext.textContent = 'Next Word';
+    btnNext.textContent = 'Next Problem';
   }
 }
 
 btnNext.addEventListener('click', () => {
   state.currentIndex++;
-  if (state.currentIndex >= state.words.length) {
+  if (state.currentIndex >= state.problems.length) {
     showSummary();
   } else {
     updateProgress();
-    showWord();
+    showProblem();
   }
 });
 
@@ -246,14 +280,14 @@ btnNext.addEventListener('click', () => {
 function showSummary() {
   showScreen(screenSummary);
 
-  const pct = state.correctCount / state.words.length;
+  const pct = state.correctCount / state.problems.length;
   const starCount = pct >= 0.9 ? 3 : pct >= 0.6 ? 2 : pct >= 0.3 ? 1 : 0;
 
   summaryStars.textContent = '⭐'.repeat(starCount) + '☆'.repeat(3 - starCount);
 
   if (pct >= 0.9) {
     summaryTitle.textContent = 'Amazing!';
-    summarySubtitle.textContent = 'You really know your sight words!';
+    summarySubtitle.textContent = 'You really know your math!';
   } else if (pct >= 0.6) {
     summaryTitle.textContent = 'Great Job!';
     summarySubtitle.textContent = 'Keep practicing and you\'ll be a pro!';
@@ -262,11 +296,11 @@ function showSummary() {
     summarySubtitle.textContent = 'Practice makes perfect!';
   } else {
     summaryTitle.textContent = 'Keep Going!';
-    summarySubtitle.textContent = 'Every word you learn counts!';
+    summarySubtitle.textContent = 'Every problem you solve counts!';
   }
 
   animateNumber(statCorrect, state.correctCount);
-  animateNumber(statTotal, state.words.length);
+  animateNumber(statTotal, state.problems.length);
   animateNumber(statTickets, state.tickets);
 
   const screenMinutes = state.tickets * 2;
@@ -280,7 +314,9 @@ function showSummary() {
 
   if (state.missed.length > 0) {
     missedSection.style.display = '';
-    missedList.innerHTML = state.missed.map(w => `<span class="missed-word">${w}</span>`).join('');
+    missedList.innerHTML = state.missed.map(m =>
+      `<span class="missed-word">${m.display} = ${m.correctAnswer}</span>`
+    ).join('');
   } else {
     missedSection.style.display = 'none';
     launchConfetti();
