@@ -9,7 +9,15 @@ const storage = (() => {
 function loadData() {
   try {
     const raw = storage.getItem(STORAGE_KEY);
-    if (raw) return JSON.parse(raw);
+    if (raw) {
+      const d = JSON.parse(raw);
+      // Migrate older data missing new fields
+      if (!d.moneyQuizzes) d.moneyQuizzes = 0;
+      if (!d.gradeBadges) d.gradeBadges = [];
+      if (!d.gradeQuizzes) d.gradeQuizzes = {};
+      if (!d.gradePerfects) d.gradePerfects = {};
+      return d;
+    }
   } catch(e) {}
   return {
     totalQuizzes: 0,
@@ -18,9 +26,14 @@ function loadData() {
     perfectQuizzes: 0,
     mathQuizzes: 0,
     readingQuizzes: 0,
+    moneyQuizzes: 0,
     streakDays: 0,
-    lastPlayDate: null,      // ISO date string YYYY-MM-DD
-    badges: [],              // array of badge IDs earned
+    lastPlayDate: null,
+    badges: [],
+    // Per-grade tracking: { "math_prek": 3, "reading_kinder": 1, ... }
+    gradeQuizzes: {},
+    gradePerfects: {},
+    gradeBadges: [],
   };
 }
 
@@ -33,20 +46,55 @@ function saveData() {
 let persist = loadData();
 
 // ====== BADGE DEFINITIONS ======
+// Overall badges
 const BADGE_DEFS = [
-  { id: 'first_quiz',    emoji: '🌟', name: 'First Quiz',       desc: 'Complete your first quiz',        check: d => d.totalQuizzes >= 1 },
-  { id: 'five_quizzes',  emoji: '🔥', name: 'On Fire',          desc: 'Complete 5 quizzes',              check: d => d.totalQuizzes >= 5 },
-  { id: 'ten_quizzes',   emoji: '🏆', name: 'Quiz Champion',    desc: 'Complete 10 quizzes',             check: d => d.totalQuizzes >= 10 },
-  { id: 'perfect',       emoji: '💯', name: 'Perfect Score',    desc: 'Get 100% on a quiz',              check: d => d.perfectQuizzes >= 1 },
-  { id: 'five_perfect',  emoji: '👑', name: 'Perfection',       desc: 'Get 5 perfect scores',            check: d => d.perfectQuizzes >= 5 },
-  { id: 'math_fan',      emoji: '🧮', name: 'Math Fan',         desc: 'Complete 3 math quizzes',         check: d => d.mathQuizzes >= 3 },
-  { id: 'bookworm',      emoji: '📚', name: 'Bookworm',         desc: 'Complete 3 reading quizzes',      check: d => d.readingQuizzes >= 3 },
-  { id: 'streak_3',      emoji: '⚡', name: '3-Day Streak',     desc: 'Play 3 days in a row',            check: d => d.streakDays >= 3 },
-  { id: 'streak_7',      emoji: '🌈', name: 'Week Warrior',     desc: 'Play 7 days in a row',            check: d => d.streakDays >= 7 },
-  { id: 'ticket_master', emoji: '🎫', name: 'Ticket Master',    desc: 'Earn 50 tickets total',           check: d => d.totalTickets >= 50 },
-  { id: 'hundred_right', emoji: '🧠', name: 'Big Brain',        desc: 'Get 100 correct answers',         check: d => d.totalCorrect >= 100 },
-  { id: 'both_modes',    emoji: '🌍', name: 'Well Rounded',     desc: 'Complete both math and reading',  check: d => d.mathQuizzes >= 1 && d.readingQuizzes >= 1 },
+  { id: 'first_quiz',    emoji: '🌟', name: 'First Quiz',       desc: 'Complete your first quiz',           check: d => d.totalQuizzes >= 1 },
+  { id: 'five_quizzes',  emoji: '🔥', name: 'On Fire',          desc: 'Complete 5 quizzes',                 check: d => d.totalQuizzes >= 5 },
+  { id: 'ten_quizzes',   emoji: '🏆', name: 'Quiz Champion',    desc: 'Complete 10 quizzes',                check: d => d.totalQuizzes >= 10 },
+  { id: 'perfect',       emoji: '💯', name: 'Perfect Score',    desc: 'Get 100% on a quiz',                 check: d => d.perfectQuizzes >= 1 },
+  { id: 'five_perfect',  emoji: '👑', name: 'Perfection',       desc: 'Get 5 perfect scores',               check: d => d.perfectQuizzes >= 5 },
+  { id: 'math_fan',      emoji: '🧮', name: 'Math Fan',         desc: 'Complete 3 math quizzes',            check: d => d.mathQuizzes >= 3 },
+  { id: 'bookworm',      emoji: '📚', name: 'Bookworm',         desc: 'Complete 3 reading quizzes',         check: d => d.readingQuizzes >= 3 },
+  { id: 'money_smart',   emoji: '💰', name: 'Money Smart',      desc: 'Complete 3 money quizzes',           check: d => d.moneyQuizzes >= 3 },
+  { id: 'streak_3',      emoji: '⚡', name: '3-Day Streak',     desc: 'Play 3 days in a row',               check: d => d.streakDays >= 3 },
+  { id: 'streak_7',      emoji: '🌈', name: 'Week Warrior',     desc: 'Play 7 days in a row',               check: d => d.streakDays >= 7 },
+  { id: 'ticket_master', emoji: '🎫', name: 'Ticket Master',    desc: 'Earn 50 tickets total',              check: d => d.totalTickets >= 50 },
+  { id: 'hundred_right', emoji: '🧠', name: 'Big Brain',        desc: 'Get 100 correct answers',            check: d => d.totalCorrect >= 100 },
+  { id: 'all_modes',     emoji: '🌍', name: 'Well Rounded',     desc: 'Complete math, reading, and money',  check: d => d.mathQuizzes >= 1 && d.readingQuizzes >= 1 && d.moneyQuizzes >= 1 },
 ];
+
+// Per-grade badge templates
+const GRADE_LEVELS = ['prek', 'kinder', 'first', 'second'];
+const GRADE_NAMES = { prek: 'Pre-K', kinder: 'Kindergarten', first: '1st Grade', second: '2nd Grade' };
+const GRADE_EMOJIS = { prek: '🌱', kinder: '🌻', first: '🌳', second: '🏔️' };
+const MODE_NAMES = { math: 'Math', reading: 'Reading', money: 'Money' };
+const MODE_EMOJIS = { math: '🧮', reading: '📖', money: '💵' };
+
+// Generate per-grade badges dynamically
+const GRADE_BADGE_DEFS = [];
+['math', 'reading', 'money'].forEach(mode => {
+  GRADE_LEVELS.forEach(grade => {
+    const key = `${mode}_${grade}`;
+    const gName = GRADE_NAMES[grade];
+    const mName = MODE_NAMES[mode];
+    // 3 quizzes at this grade+mode
+    GRADE_BADGE_DEFS.push({
+      id: `${key}_3`,
+      emoji: MODE_EMOJIS[mode],
+      name: `${mName} ${gName}`,
+      desc: `Complete 3 ${mName.toLowerCase()} quizzes at ${gName}`,
+      check: d => (d.gradeQuizzes[key] || 0) >= 3,
+    });
+    // Perfect at this grade+mode
+    GRADE_BADGE_DEFS.push({
+      id: `${key}_perfect`,
+      emoji: '💎',
+      name: `${gName} ${mName} Star`,
+      desc: `Get a perfect ${mName.toLowerCase()} score at ${gName}`,
+      check: d => (d.gradePerfects[key] || 0) >= 1,
+    });
+  });
+});
 
 function checkBadges() {
   let newBadges = [];
@@ -56,13 +104,19 @@ function checkBadges() {
       newBadges.push(b);
     }
   });
+  GRADE_BADGE_DEFS.forEach(b => {
+    if (!persist.gradeBadges.includes(b.id) && b.check(persist)) {
+      persist.gradeBadges.push(b.id);
+      newBadges.push(b);
+    }
+  });
   saveData();
   return newBadges;
 }
 
 function updateStreak() {
   const today = new Date().toISOString().split('T')[0];
-  if (persist.lastPlayDate === today) return; // already played today
+  if (persist.lastPlayDate === today) return;
 
   if (persist.lastPlayDate) {
     const last = new Date(persist.lastPlayDate);
@@ -71,7 +125,7 @@ function updateStreak() {
     if (diff === 1) {
       persist.streakDays++;
     } else if (diff > 1) {
-      persist.streakDays = 1; // reset
+      persist.streakDays = 1;
     }
   } else {
     persist.streakDays = 1;
@@ -96,7 +150,7 @@ const MATH_LEVELS = {
   second: { name: '2nd Grade',   operations: ['+','−','×','÷'], range: [1,20],  multRange: [1,12], resultMax: 50 }
 };
 
-function generateProblem(level) {
+function generateMathProblem(level) {
   const cfg = MATH_LEVELS[level];
   const op = cfg.operations[Math.floor(Math.random() * cfg.operations.length)];
   let a, b, answer, display;
@@ -134,6 +188,127 @@ function generateProblem(level) {
   return { display, answer, operation: op };
 }
 
+// ====== MONEY PROBLEM GENERATION ======
+const COINS = [
+  { name: 'penny',   plural: 'pennies', value: 1,  symbol: '1¢'  },
+  { name: 'nickel',  plural: 'nickels',  value: 5,  symbol: '5¢'  },
+  { name: 'dime',    plural: 'dimes',    value: 10, symbol: '10¢' },
+  { name: 'quarter', plural: 'quarters', value: 25, symbol: '25¢' },
+];
+
+function generateMoneyProblem(level) {
+  switch(level) {
+    case 'prek':   return generateCoinIdProblem();
+    case 'kinder': return generateCoinCountProblem();
+    case 'first':  return generateMakeChangeProblem();
+    case 'second': return generateMoneyWordProblem();
+    default:       return generateCoinIdProblem();
+  }
+}
+
+function generateCoinIdProblem() {
+  // "A ___ is worth ___¢" — pick the correct value
+  const coin = COINS[randInt(0, 3)];
+  const wrongValues = COINS.filter(c => c.value !== coin.value).map(c => c.value);
+  const choices = shuffleArray([coin.value, ...wrongValues]);
+  return {
+    type: 'multiple_choice',
+    prompt: `How much is a ${coin.name} worth?`,
+    display: coin.name.toUpperCase(),
+    choices: choices.map(v => v + '¢'),
+    answer: coin.value + '¢',
+    answerNum: coin.value,
+    explanation: `A ${coin.name} = ${coin.value}¢`
+  };
+}
+
+function generateCoinCountProblem() {
+  // "How many cents?" with 2-3 coins
+  const numCoins = randInt(2, 3);
+  let total = 0;
+  let parts = [];
+  for (let i = 0; i < numCoins; i++) {
+    const coin = COINS[randInt(0, 3)];
+    total += coin.value;
+    parts.push(coin.name);
+  }
+  return {
+    type: 'number',
+    prompt: 'How many cents in total?',
+    display: parts.join(' + '),
+    answer: total + '¢',
+    answerNum: total,
+    explanation: `${parts.join(' + ')} = ${total}¢`
+  };
+}
+
+function generateMakeChangeProblem() {
+  // "You have X¢. You spend Y¢. How much left?"
+  const have = [25, 50, 75, 100][randInt(0, 3)];
+  const spend = randInt(5, have - 5);
+  // Round to nearest 5
+  const spendRound = Math.round(spend / 5) * 5 || 5;
+  const change = have - spendRound;
+  return {
+    type: 'number',
+    prompt: `You have ${have}¢. You spend ${spendRound}¢. How much is left?`,
+    display: `${have}¢ − ${spendRound}¢`,
+    answer: change + '¢',
+    answerNum: change,
+    explanation: `${have}¢ − ${spendRound}¢ = ${change}¢`
+  };
+}
+
+function generateMoneyWordProblem() {
+  const type = randInt(0, 2);
+  if (type === 0) {
+    // Compare prices
+    const items = ['apple', 'banana', 'cookie', 'juice', 'pencil', 'sticker', 'toy car', 'candy bar'];
+    const i1 = randInt(0, items.length - 1);
+    let i2 = randInt(0, items.length - 1);
+    while (i2 === i1) i2 = randInt(0, items.length - 1);
+    const p1 = randInt(1, 20) * 5; // 5¢ increments
+    let p2 = randInt(1, 20) * 5;
+    while (p2 === p1) p2 = randInt(1, 20) * 5;
+    const more = p1 > p2 ? items[i1] : items[i2];
+    return {
+      type: 'multiple_choice',
+      prompt: `${items[i1]} costs ${p1}¢. ${items[i2]} costs ${p2}¢. Which costs more?`,
+      display: `${items[i1]} ${p1}¢  vs  ${items[i2]} ${p2}¢`,
+      choices: [items[i1], items[i2]],
+      answer: more,
+      answerNum: null,
+      explanation: `${more} costs more`
+    };
+  } else if (type === 1) {
+    // Buy two items
+    const p1 = randInt(2, 10) * 5;
+    const p2 = randInt(2, 10) * 5;
+    const total = p1 + p2;
+    return {
+      type: 'number',
+      prompt: `You buy a snack for ${p1}¢ and a drink for ${p2}¢. How much total?`,
+      display: `${p1}¢ + ${p2}¢`,
+      answer: total + '¢',
+      answerNum: total,
+      explanation: `${p1}¢ + ${p2}¢ = ${total}¢`
+    };
+  } else {
+    // Savings problem
+    const perDay = [5, 10, 25][randInt(0, 2)];
+    const days = randInt(2, 5);
+    const total = perDay * days;
+    return {
+      type: 'number',
+      prompt: `You save ${perDay}¢ each day for ${days} days. How much do you have?`,
+      display: `${perDay}¢ × ${days} days`,
+      answer: total + '¢',
+      answerNum: total,
+      explanation: `${perDay}¢ × ${days} = ${total}¢`
+    };
+  }
+}
+
 function randInt(min, max) {
   return Math.floor(Math.random() * (max - min + 1)) + min;
 }
@@ -149,16 +324,13 @@ function shuffleArray(arr) {
 
 // ====== STATE ======
 let state = {
-  mode: null,        // 'math' or 'reading'
+  mode: null,        // 'math', 'reading', or 'money'
   level: 'prek',
   itemCount: 10,
-  // Math-specific
-  problems: [],
-  // Reading-specific
-  words: [],
+  problems: [],      // math or money problems
+  words: [],         // reading words
   currentWord: null,
-  showDuration: 10,
-  // Shared
+  showDuration: 5,   // 5 seconds for reading
   currentIndex: 0,
   tickets: 0,
   correctCount: 0,
@@ -193,14 +365,16 @@ function renderStreakBar() {
 }
 
 function renderBadgesSummary() {
+  const totalBadges = BADGE_DEFS.length + GRADE_BADGE_DEFS.length;
+  const earnedBadges = persist.badges.length + persist.gradeBadges.length;
   const el = $('home-badge-count');
-  if (el) el.textContent = `${persist.badges.length} / ${BADGE_DEFS.length}`;
+  if (el) el.textContent = `${earnedBadges} / ${totalBadges}`;
 }
 
 // Mode selection
 document.addEventListener('click', (e) => {
   const modeCard = e.target.closest('[data-mode]');
-  if (modeCard) {
+  if (modeCard && modeCard.closest('#screen-home')) {
     state.mode = modeCard.dataset.mode;
     showScreen('screen-setup');
     initSetup();
@@ -239,7 +413,7 @@ function initSetup() {
       <button class="level-card" role="radio" aria-checked="false" data-level="second">
         <span class="level-emoji">🏔️</span><span class="level-name">2nd Grade</span><span class="level-desc">+, −, ×, ÷ up to 20</span>
       </button>`;
-  } else {
+  } else if (state.mode === 'reading') {
     title.textContent = 'Sight Words';
     $('setup-item-label').textContent = 'Number of words';
     levelCards.innerHTML = `
@@ -254,6 +428,22 @@ function initSetup() {
       </button>
       <button class="level-card" role="radio" aria-checked="false" data-level="second">
         <span class="level-emoji">🏔️</span><span class="level-name">2nd Grade</span><span class="level-desc">because, always, which...</span>
+      </button>`;
+  } else {
+    title.textContent = 'Money Quiz';
+    $('setup-item-label').textContent = 'Number of questions';
+    levelCards.innerHTML = `
+      <button class="level-card selected" role="radio" aria-checked="true" data-level="prek">
+        <span class="level-emoji">🌱</span><span class="level-name">Pre-K</span><span class="level-desc">Coin values</span>
+      </button>
+      <button class="level-card" role="radio" aria-checked="false" data-level="kinder">
+        <span class="level-emoji">🌻</span><span class="level-name">Kindergarten</span><span class="level-desc">Count coins</span>
+      </button>
+      <button class="level-card" role="radio" aria-checked="false" data-level="first">
+        <span class="level-emoji">🌳</span><span class="level-name">1st Grade</span><span class="level-desc">Making change</span>
+      </button>
+      <button class="level-card" role="radio" aria-checked="false" data-level="second">
+        <span class="level-emoji">🏔️</span><span class="level-name">2nd Grade</span><span class="level-desc">Word problems</span>
       </button>`;
   }
 
@@ -313,7 +503,12 @@ function startQuiz() {
   if (state.mode === 'math') {
     state.problems = [];
     for (let i = 0; i < state.itemCount; i++) {
-      state.problems.push(generateProblem(state.level));
+      state.problems.push(generateMathProblem(state.level));
+    }
+  } else if (state.mode === 'money') {
+    state.problems = [];
+    for (let i = 0; i < state.itemCount; i++) {
+      state.problems.push(generateMoneyProblem(state.level));
     }
   } else {
     const pool = WORDS[state.level] || WORDS.prek;
@@ -321,12 +516,20 @@ function startQuiz() {
   }
 
   showScreen('screen-quiz');
+  // Hide choice area at the start
+  $('choice-area').style.display = 'none';
+  $('choice-area').innerHTML = '';
   updateProgress();
   showItem();
 }
 
+function getTotal() {
+  if (state.mode === 'reading') return state.words.length;
+  return state.problems.length;
+}
+
 function updateProgress() {
-  const total = state.mode === 'math' ? state.problems.length : state.words.length;
+  const total = getTotal();
   $('progress-text').textContent = `${state.currentIndex + 1} / ${total}`;
   $('ticket-display').textContent = state.tickets;
   const pct = (state.currentIndex / total) * 100;
@@ -334,8 +537,14 @@ function updateProgress() {
 }
 
 function showItem() {
+  // Hide choice area by default
+  $('choice-area').style.display = 'none';
+  $('choice-area').innerHTML = '';
+
   if (state.mode === 'math') {
     showMathProblem();
+  } else if (state.mode === 'money') {
+    showMoneyProblem();
   } else {
     showReadingWord();
   }
@@ -355,9 +564,77 @@ function showMathProblem() {
   input.placeholder = '?';
   input.value = '';
   input.className = 'answer-input';
+  input.style.display = '';
+  $('btn-check').style.display = '';
   $('hint-area').innerHTML = '';
   input.focus();
 }
+
+// --- Money mode ---
+function showMoneyProblem() {
+  const problem = state.problems[state.currentIndex];
+  $('quiz-prompt-solve').textContent = problem.prompt;
+  $('display-area-solve').textContent = problem.display;
+  $('display-area-solve').className = 'problem-display money-display';
+  showQuizStep('quiz-solve');
+
+  const input = $('answer-input');
+  $('hint-area').innerHTML = '';
+
+  if (problem.type === 'multiple_choice') {
+    // Hide text input, show choice buttons
+    input.style.display = 'none';
+    $('btn-check').style.display = 'none';
+    const choiceArea = $('choice-area');
+    choiceArea.style.display = 'grid';
+    choiceArea.innerHTML = problem.choices.map(c =>
+      `<button class="choice-btn" data-choice="${c}">${c}</button>`
+    ).join('');
+  } else {
+    input.style.display = '';
+    $('btn-check').style.display = '';
+    input.type = 'number';
+    input.inputMode = 'numeric';
+    input.placeholder = '¢';
+    input.value = '';
+    input.className = 'answer-input';
+    input.focus();
+  }
+}
+
+// Choice button handler
+document.addEventListener('click', (e) => {
+  const choiceBtn = e.target.closest('.choice-btn');
+  if (!choiceBtn || !$('quiz-solve').classList.contains('active')) return;
+  if (state.mode !== 'money') return;
+
+  const problem = state.problems[state.currentIndex];
+  const chosen = choiceBtn.dataset.choice;
+  const correct = chosen === problem.answer;
+
+  // Highlight buttons
+  document.querySelectorAll('.choice-btn').forEach(btn => {
+    btn.disabled = true;
+    if (btn.dataset.choice === problem.answer) {
+      btn.classList.add('correct');
+    } else if (btn === choiceBtn && !correct) {
+      btn.classList.add('wrong');
+    }
+  });
+
+  if (correct) {
+    state.correctCount++;
+    state.tickets++;
+  } else {
+    state.missed.push({
+      display: problem.display,
+      correctAnswer: problem.answer,
+      userAnswer: chosen
+    });
+  }
+
+  setTimeout(() => showResult(correct, problem.explanation), 500);
+});
 
 // --- Reading mode ---
 function showReadingWord() {
@@ -400,6 +677,8 @@ function switchToTypeStep() {
   showQuizStep('quiz-solve');
 
   const input = $('answer-input');
+  input.style.display = '';
+  $('btn-check').style.display = '';
   input.type = 'text';
   input.inputMode = 'text';
   input.placeholder = 'Type the word...';
@@ -431,6 +710,11 @@ function checkAnswer() {
     const problem = state.problems[state.currentIndex];
     correct = parseInt(userAnswer, 10) === problem.answer;
     displayCorrect = `${problem.display} = ${problem.answer}`;
+  } else if (state.mode === 'money') {
+    const problem = state.problems[state.currentIndex];
+    const numAnswer = parseInt(userAnswer, 10);
+    correct = numAnswer === problem.answerNum;
+    displayCorrect = problem.explanation;
   } else {
     correct = userAnswer.toLowerCase() === state.currentWord.toLowerCase();
     displayCorrect = state.currentWord;
@@ -442,11 +726,26 @@ function checkAnswer() {
     state.tickets++;
   } else {
     input.className = 'answer-input wrong';
-    state.missed.push({
-      display: state.mode === 'math' ? state.problems[state.currentIndex].display : state.currentWord,
-      correctAnswer: state.mode === 'math' ? state.problems[state.currentIndex].answer : state.currentWord,
-      userAnswer
-    });
+    if (state.mode === 'money') {
+      const problem = state.problems[state.currentIndex];
+      state.missed.push({
+        display: problem.display,
+        correctAnswer: problem.answer,
+        userAnswer
+      });
+    } else if (state.mode === 'math') {
+      state.missed.push({
+        display: state.problems[state.currentIndex].display,
+        correctAnswer: state.problems[state.currentIndex].answer,
+        userAnswer
+      });
+    } else {
+      state.missed.push({
+        display: state.currentWord,
+        correctAnswer: state.currentWord,
+        userAnswer
+      });
+    }
   }
 
   setTimeout(() => showResult(correct, displayCorrect), 400);
@@ -469,6 +768,8 @@ function showResult(correct, displayCorrect) {
 
   if (state.mode === 'math') {
     $('result-detail').textContent = displayCorrect;
+  } else if (state.mode === 'money') {
+    $('result-detail').textContent = displayCorrect;
   } else {
     $('result-detail').textContent = correct ? `"${displayCorrect}"` : `The word was "${displayCorrect}"`;
   }
@@ -476,14 +777,20 @@ function showResult(correct, displayCorrect) {
   $('ticket-earned').className = correct ? 'ticket-earned show' : 'ticket-earned';
   $('ticket-display').textContent = state.tickets;
 
-  const total = state.mode === 'math' ? state.problems.length : state.words.length;
-  $('btn-next').textContent = state.currentIndex >= total - 1 ? 'See Results' : (state.mode === 'math' ? 'Next Problem' : 'Next Word');
+  const total = getTotal();
+  const isLast = state.currentIndex >= total - 1;
+  if (isLast) {
+    $('btn-next').textContent = 'See Results';
+  } else {
+    const labels = { math: 'Next Problem', reading: 'Next Word', money: 'Next Question' };
+    $('btn-next').textContent = labels[state.mode] || 'Next';
+  }
 }
 
 document.addEventListener('click', (e) => {
   if (e.target.closest('#btn-next')) {
     state.currentIndex++;
-    const total = state.mode === 'math' ? state.problems.length : state.words.length;
+    const total = getTotal();
     if (state.currentIndex >= total) {
       finishQuiz();
     } else {
@@ -495,7 +802,7 @@ document.addEventListener('click', (e) => {
 
 // ====== FINISH QUIZ & SUMMARY ======
 function finishQuiz() {
-  const total = state.mode === 'math' ? state.problems.length : state.words.length;
+  const total = getTotal();
   const pct = state.correctCount / total;
   const isPerfect = pct >= 1;
 
@@ -504,8 +811,17 @@ function finishQuiz() {
   persist.totalCorrect += state.correctCount;
   persist.totalTickets += state.tickets;
   if (isPerfect) persist.perfectQuizzes++;
+
   if (state.mode === 'math') persist.mathQuizzes++;
-  else persist.readingQuizzes++;
+  else if (state.mode === 'reading') persist.readingQuizzes++;
+  else if (state.mode === 'money') persist.moneyQuizzes++;
+
+  // Per-grade tracking
+  const gradeKey = `${state.mode}_${state.level}`;
+  persist.gradeQuizzes[gradeKey] = (persist.gradeQuizzes[gradeKey] || 0) + 1;
+  if (isPerfect) {
+    persist.gradePerfects[gradeKey] = (persist.gradePerfects[gradeKey] || 0) + 1;
+  }
 
   updateStreak();
   const newBadges = checkBadges();
@@ -515,9 +831,16 @@ function finishQuiz() {
   const starCount = pct >= 0.9 ? 3 : pct >= 0.6 ? 2 : pct >= 0.3 ? 1 : 0;
   $('summary-stars').textContent = '⭐'.repeat(starCount) + '☆'.repeat(3 - starCount);
 
+  const modeMessages = {
+    math: { great: 'You really know your math!', low: 'Every problem you solve counts!' },
+    reading: { great: 'You really know your words!', low: 'Every word you learn counts!' },
+    money: { great: 'You really know your money!', low: 'Every coin counts!' }
+  };
+  const msgs = modeMessages[state.mode] || modeMessages.math;
+
   if (pct >= 0.9) {
     $('summary-title').textContent = 'Amazing!';
-    $('summary-subtitle').textContent = state.mode === 'math' ? 'You really know your math!' : 'You really know your words!';
+    $('summary-subtitle').textContent = msgs.great;
   } else if (pct >= 0.6) {
     $('summary-title').textContent = 'Great Job!';
     $('summary-subtitle').textContent = 'Keep practicing and you\'ll be a pro!';
@@ -526,7 +849,7 @@ function finishQuiz() {
     $('summary-subtitle').textContent = 'Practice makes perfect!';
   } else {
     $('summary-title').textContent = 'Keep Going!';
-    $('summary-subtitle').textContent = state.mode === 'math' ? 'Every problem you solve counts!' : 'Every word you learn counts!';
+    $('summary-subtitle').textContent = msgs.low;
   }
 
   animateNumber($('stat-correct'), state.correctCount);
@@ -542,9 +865,13 @@ function finishQuiz() {
   const missedList = $('missed-list');
   if (state.missed.length > 0) {
     missedSection.style.display = '';
-    $('missed-label').textContent = state.mode === 'math' ? 'Problems to Practice' : 'Words to Practice';
+    const missedLabels = { math: 'Problems to Practice', reading: 'Words to Practice', money: 'Questions to Review' };
+    $('missed-label').textContent = missedLabels[state.mode] || 'To Practice';
     missedList.innerHTML = state.missed.map(m => {
-      const text = state.mode === 'math' ? `${m.display} = ${m.correctAnswer}` : m.correctAnswer;
+      let text;
+      if (state.mode === 'math') text = `${m.display} = ${m.correctAnswer}`;
+      else if (state.mode === 'money') text = `${m.correctAnswer}`;
+      else text = m.correctAnswer;
       return `<span class="missed-word">${text}</span>`;
     }).join('');
   } else {
@@ -635,17 +962,65 @@ function updateTimerDisplay() {
 }
 
 // ====== BADGES SCREEN ======
+let badgeTab = 'overall';
+
 function renderBadgesScreen() {
-  const grid = $('badges-grid');
-  grid.innerHTML = BADGE_DEFS.map(b => {
-    const earned = persist.badges.includes(b.id);
-    return `<div class="badge-item ${earned ? 'earned' : 'locked'}">
-      <span class="badge-emoji">${earned ? b.emoji : '🔒'}</span>
-      <span class="badge-name">${b.name}</span>
-      <span class="badge-desc">${b.desc}</span>
-    </div>`;
-  }).join('');
+  badgeTab = 'overall';
+  renderBadgeTabs();
+  renderBadgeContent();
 }
+
+function renderBadgeTabs() {
+  const tabs = $('badge-tabs');
+  if (!tabs) return;
+  tabs.innerHTML = `
+    <button class="badge-tab ${badgeTab === 'overall' ? 'active' : ''}" data-badge-tab="overall">Overall</button>
+    <button class="badge-tab ${badgeTab === 'grade' ? 'active' : ''}" data-badge-tab="grade">Per Grade</button>
+  `;
+}
+
+function renderBadgeContent() {
+  const grid = $('badges-grid');
+  if (badgeTab === 'overall') {
+    grid.innerHTML = BADGE_DEFS.map(b => {
+      const earned = persist.badges.includes(b.id);
+      return `<div class="badge-item ${earned ? 'earned' : 'locked'}">
+        <span class="badge-emoji">${earned ? b.emoji : '🔒'}</span>
+        <span class="badge-name">${b.name}</span>
+        <span class="badge-desc">${b.desc}</span>
+      </div>`;
+    }).join('');
+  } else {
+    // Group by grade
+    let html = '';
+    GRADE_LEVELS.forEach(grade => {
+      const gradeBadges = GRADE_BADGE_DEFS.filter(b => b.id.includes(`_${grade}_`));
+      html += `<div class="grade-badge-section">
+        <h3 class="grade-badge-title">${GRADE_EMOJIS[grade]} ${GRADE_NAMES[grade]}</h3>
+        <div class="grade-badge-grid">`;
+      gradeBadges.forEach(b => {
+        const earned = persist.gradeBadges.includes(b.id);
+        html += `<div class="badge-item small ${earned ? 'earned' : 'locked'}">
+          <span class="badge-emoji">${earned ? b.emoji : '🔒'}</span>
+          <span class="badge-name">${b.name}</span>
+          <span class="badge-desc">${b.desc}</span>
+        </div>`;
+      });
+      html += `</div></div>`;
+    });
+    grid.innerHTML = html;
+  }
+}
+
+// Badge tab clicks
+document.addEventListener('click', (e) => {
+  const tab = e.target.closest('[data-badge-tab]');
+  if (tab) {
+    badgeTab = tab.dataset.badgeTab;
+    renderBadgeTabs();
+    renderBadgeContent();
+  }
+});
 
 // ====== CONFETTI ======
 function launchConfetti() {
