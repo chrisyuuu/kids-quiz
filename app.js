@@ -1,9 +1,14 @@
-// ====== PERSISTENCE (localStorage) ======
+// ====== PERSISTENCE (localStorage with fallback) ======
 const STORAGE_KEY = 'kidQuizData';
+
+const storage = (() => {
+  try { const k = '__test__'; localStorage.setItem(k, '1'); localStorage.removeItem(k); return localStorage; }
+  catch(e) { const m = {}; return { getItem: k => m[k] ?? null, setItem: (k,v) => { m[k] = v; }, removeItem: k => { delete m[k]; } }; }
+})();
 
 function loadData() {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = storage.getItem(STORAGE_KEY);
     if (raw) return JSON.parse(raw);
   } catch(e) {}
   return {
@@ -21,7 +26,7 @@ function loadData() {
 
 function saveData() {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(persist));
+    storage.setItem(STORAGE_KEY, JSON.stringify(persist));
   } catch(e) {}
 }
 
