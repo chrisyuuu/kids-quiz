@@ -289,10 +289,10 @@ body {
 /* Math problem display */
 .problem-display {
   font-family: var(--font-display); font-weight: 700; font-size: var(--text-3xl);
-  color: var(--color-text); padding: var(--space-6) var(--space-4); min-height: 80px;
+  color: var(--color-text); padding: var(--space-6) var(--space-6); min-height: 80px;
   display: grid; place-items: center; letter-spacing: 0.04em;
   background: var(--color-surface); border: 2px solid var(--color-border);
-  border-radius: var(--radius-xl); width: 100%; max-width: 360px;
+  border-radius: var(--radius-xl); width: auto; max-width: 100%; white-space: nowrap;
 }
 
 /* Type area */
