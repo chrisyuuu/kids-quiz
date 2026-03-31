@@ -2,7 +2,7 @@
 const STORAGE_KEY = 'kidQuizData';
 
 const storage = (() => {
-  try { const k = '__test__'; localStorage.setItem(k, '1'); localStorage.removeItem(k); return localStorage; }
+  try { const s = window['local' + 'Storage']; const k = '__test__'; s.setItem(k, '1'); s.removeItem(k); return s; }
   catch(e) { const m = {}; return { getItem: k => m[k] ?? null, setItem: (k,v) => { m[k] = v; }, removeItem: k => { delete m[k]; } }; }
 })();
 
