@@ -18,7 +18,7 @@
 
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Math Quiz</title>
+<title>Kids Quiz</title>
 
 <link href="https://api.fontshare.com/v2/css?f[]=chillax@400,500,600,700&f[]=nunito@400,500,600,700&display=swap" rel="stylesheet">
 
@@ -27,66 +27,77 @@
 </head>
 <body>
 
-<!-- SCREEN: Welcome / Setup -->
-<main id="screen-welcome" class="screen active">
-  <div class="welcome-container">
+<!-- ===================== HOME SCREEN ===================== -->
+<main id="screen-home" class="screen active">
+  <div class="home-container">
     <div class="logo-area">
-      <svg class="logo-icon" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg" aria-label="Math Quiz logo">
-        <!-- Calculator body -->
-        <rect x="12" y="6" width="56" height="68" rx="8" stroke="currentColor" stroke-width="4"/>
-        <!-- Screen -->
-        <rect x="20" y="14" width="40" height="16" rx="4" fill="var(--color-primary-light)" stroke="currentColor" stroke-width="3"/>
-        <!-- Display text -->
-        <text x="40" y="27" text-anchor="middle" font-family="var(--font-display)" font-weight="700" font-size="12" fill="currentColor">1+2</text>
-        <!-- Button grid -->
-        <rect x="20" y="38" width="11" height="9" rx="2.5" fill="currentColor" opacity="0.15"/>
-        <rect x="34.5" y="38" width="11" height="9" rx="2.5" fill="currentColor" opacity="0.15"/>
-        <rect x="49" y="38" width="11" height="9" rx="2.5" fill="currentColor" opacity="0.15"/>
-        <rect x="20" y="51" width="11" height="9" rx="2.5" fill="currentColor" opacity="0.15"/>
-        <rect x="34.5" y="51" width="11" height="9" rx="2.5" fill="currentColor" opacity="0.15"/>
-        <rect x="49" y="51" width="11" height="9" rx="2.5" fill="currentColor" opacity="0.15"/>
-        <rect x="20" y="64" width="25.5" height="9" rx="2.5" fill="currentColor" opacity="0.15"/>
-        <rect x="49" y="64" width="11" height="9" rx="2.5" fill="var(--color-gold)"/>
-        <!-- Star badge -->
-        <circle cx="62" cy="14" r="11" fill="var(--color-gold)" stroke="var(--color-bg)" stroke-width="3"/>
-        <text x="62" y="18" text-anchor="middle" font-family="var(--font-display)" font-weight="700" font-size="11" fill="#fff">★</text>
+      <svg class="logo-icon" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg" aria-label="Kids Quiz logo">
+        <rect x="8" y="10" width="64" height="52" rx="10" stroke="currentColor" stroke-width="4"/>
+        <rect x="16" y="18" width="20" height="14" rx="4" fill="var(--color-primary-light)" stroke="currentColor" stroke-width="2.5"/>
+        <text x="26" y="29" text-anchor="middle" font-family="var(--font-display)" font-weight="700" font-size="9" fill="currentColor">1+2</text>
+        <rect x="44" y="18" width="20" height="14" rx="4" fill="var(--color-gold-light)" stroke="currentColor" stroke-width="2.5"/>
+        <text x="54" y="29" text-anchor="middle" font-family="var(--font-display)" font-weight="700" font-size="9" fill="currentColor">Aa</text>
+        <circle cx="40" cy="52" r="10" fill="var(--color-gold)" stroke="var(--color-bg)" stroke-width="3"/>
+        <text x="40" y="56" text-anchor="middle" font-family="var(--font-display)" font-weight="700" font-size="10" fill="#fff">★</text>
       </svg>
-      <h1>Math<br><span class="accent">Quiz</span></h1>
+      <h1>Kids<br><span class="accent">Quiz</span></h1>
     </div>
-    <p class="tagline">Solve problems, earn screen time tickets.</p>
+    <p class="tagline">Learn, earn tickets, unlock badges.</p>
 
-    <div class="setup-section">
-      <label class="field-label" for="level-select">Choose a level</label>
-      <div class="level-cards" id="level-select" role="radiogroup" aria-label="Difficulty level">
-        <button class="level-card selected" role="radio" aria-checked="true" data-level="prek">
-          <span class="level-emoji">🌱</span>
-          <span class="level-name">Pre-K</span>
-          <span class="level-desc">Addition 1–5</span>
-        </button>
-        <button class="level-card" role="radio" aria-checked="false" data-level="kinder">
-          <span class="level-emoji">🌻</span>
-          <span class="level-name">Kindergarten</span>
-          <span class="level-desc">Add & Subtract 1–10</span>
-        </button>
-        <button class="level-card" role="radio" aria-checked="false" data-level="first">
-          <span class="level-emoji">🌳</span>
-          <span class="level-name">1st Grade</span>
-          <span class="level-desc">+, −, × up to 12</span>
-        </button>
-        <button class="level-card" role="radio" aria-checked="false" data-level="second">
-          <span class="level-emoji">🏔️</span>
-          <span class="level-name">2nd Grade</span>
-          <span class="level-desc">+, −, ×, ÷ up to 20</span>
-        </button>
+    <!-- Streak & stats bar -->
+    <div class="stats-bar">
+      <div class="stat-pill">
+        <span class="stat-pill-icon">🔥</span>
+        <span class="stat-pill-value" id="streak-count">0</span>
+        <span class="stat-pill-label">day streak</span>
+      </div>
+      <div class="stat-pill">
+        <span class="stat-pill-icon">🎫</span>
+        <span class="stat-pill-value" id="home-tickets">0</span>
+        <span class="stat-pill-label">tickets</span>
       </div>
     </div>
 
+    <!-- Mode picker -->
+    <div class="mode-cards">
+      <button class="mode-card mode-math" data-mode="math">
+        <span class="mode-icon">🧮</span>
+        <span class="mode-name">Math</span>
+        <span class="mode-desc">Addition, subtraction, multiplication, division</span>
+      </button>
+      <button class="mode-card mode-reading" data-mode="reading">
+        <span class="mode-icon">📖</span>
+        <span class="mode-name">Reading</span>
+        <span class="mode-desc">Sight words for Pre-K through 2nd grade</span>
+      </button>
+    </div>
+
+    <!-- Badges shortcut -->
+    <button class="btn-secondary badge-btn" id="btn-badges">
+      🏅 Badges <span id="home-badge-count">0 / 12</span>
+    </button>
+  </div>
+</main>
+
+<!-- ===================== SETUP SCREEN ===================== -->
+<main id="screen-setup" class="screen">
+  <div class="welcome-container">
+    <button class="btn-back" id="btn-setup-back" aria-label="Back to home">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+    </button>
+    <h2 class="setup-title" id="setup-title">Math Quiz</h2>
+
     <div class="setup-section">
-      <label class="field-label" for="word-count">Number of problems</label>
+      <label class="field-label">Choose a level</label>
+      <div class="level-cards" id="level-select" role="radiogroup" aria-label="Difficulty level"></div>
+    </div>
+
+    <div class="setup-section">
+      <label class="field-label" id="setup-item-label">Number of problems</label>
       <div class="stepper">
-        <button class="stepper-btn" id="count-down" aria-label="Decrease problem count">−</button>
-        <span class="stepper-value" id="word-count">10</span>
-        <button class="stepper-btn" id="count-up" aria-label="Increase problem count">+</button>
+        <button class="stepper-btn" id="count-down" aria-label="Decrease count">−</button>
+        <span class="stepper-value" id="item-count">10</span>
+        <button class="stepper-btn" id="count-up" aria-label="Increase count">+</button>
       </div>
     </div>
 
@@ -97,7 +108,7 @@
   </div>
 </main>
 
-<!-- SCREEN: Quiz -->
+<!-- ===================== QUIZ SCREEN ===================== -->
 <main id="screen-quiz" class="screen">
   <header class="quiz-header">
     <div class="progress-info">
@@ -113,18 +124,31 @@
   </header>
 
   <div class="quiz-body">
-    <!-- Step 1: Solve the problem -->
-    <div id="quiz-solve" class="quiz-step active">
-      <p class="instruction-text">Solve this problem:</p>
-      <div class="problem-display" id="problem-display">3 + 2 = ?</div>
+    <!-- Reading: show word with countdown -->
+    <div id="quiz-show-word" class="quiz-step">
+      <p class="instruction-text" id="quiz-prompt">Read this word carefully:</p>
+      <div class="word-display" id="display-area"></div>
+      <div class="countdown-ring">
+        <svg viewBox="0 0 100 100">
+          <circle class="ring-bg" cx="50" cy="50" r="44"/>
+          <circle class="ring-fill" cx="50" cy="50" r="44" id="ring-circle"/>
+        </svg>
+        <span class="countdown-number" id="countdown-number">10</span>
+      </div>
+    </div>
+
+    <!-- Solve / type step -->
+    <div id="quiz-solve" class="quiz-step">
+      <p class="instruction-text" id="quiz-prompt-solve">Solve this problem:</p>
+      <div class="problem-display" id="display-area-solve"></div>
       <div class="type-area">
-        <input type="number" id="answer-input" class="answer-input" inputmode="numeric" pattern="[0-9]*" autocomplete="off" aria-label="Type your answer" placeholder="?">
+        <input type="number" id="answer-input" class="answer-input" inputmode="numeric" autocomplete="off" autocapitalize="none" spellcheck="false" aria-label="Type your answer" placeholder="?">
         <button class="btn-submit" id="btn-check">Check</button>
       </div>
       <div class="hint-area" id="hint-area"></div>
     </div>
 
-    <!-- Step 2: Result feedback -->
+    <!-- Result feedback -->
     <div id="quiz-result" class="quiz-step">
       <div class="result-icon" id="result-icon"></div>
       <p class="result-message" id="result-message"></p>
@@ -135,12 +159,12 @@
           <span class="ticket-label">+1 Ticket = 2 min screen time</span>
         </div>
       </div>
-      <button class="btn-primary" id="btn-next">Next Problem</button>
+      <button class="btn-primary" id="btn-next">Next</button>
     </div>
   </div>
 </main>
 
-<!-- SCREEN: Summary -->
+<!-- ===================== SUMMARY SCREEN ===================== -->
 <main id="screen-summary" class="screen">
   <div class="summary-container">
     <div class="summary-stars" id="summary-stars"></div>
@@ -148,18 +172,9 @@
     <p class="summary-subtitle" id="summary-subtitle"></p>
 
     <div class="summary-stats">
-      <div class="stat-card stat-correct">
-        <span class="stat-number" id="stat-correct">0</span>
-        <span class="stat-label">Correct</span>
-      </div>
-      <div class="stat-card stat-total">
-        <span class="stat-number" id="stat-total">0</span>
-        <span class="stat-label">Total</span>
-      </div>
-      <div class="stat-card stat-tickets">
-        <span class="stat-number" id="stat-tickets">0</span>
-        <span class="stat-label">Tickets</span>
-      </div>
+      <div class="stat-card stat-correct"><span class="stat-number" id="stat-correct">0</span><span class="stat-label">Correct</span></div>
+      <div class="stat-card stat-total"><span class="stat-number" id="stat-total">0</span><span class="stat-label">Total</span></div>
+      <div class="stat-card stat-tickets"><span class="stat-number" id="stat-tickets">0</span><span class="stat-label">Tickets</span></div>
     </div>
 
     <div class="screen-time-box" id="screen-time-box">
@@ -170,6 +185,9 @@
         Start Timer
       </button>
     </div>
+
+    <!-- New badges -->
+    <div class="new-badges-box" id="new-badges" style="display:none"></div>
 
     <!-- Timer overlay -->
     <div class="timer-overlay" id="timer-overlay">
@@ -188,15 +206,27 @@
       <button class="btn-timer-done" id="btn-timer-done">End Timer</button>
     </div>
 
-    <div class="missed-words" id="missed-words-section" style="display:none">
-      <h3>Problems to Practice</h3>
+    <div class="missed-words" id="missed-section" style="display:none">
+      <h3 id="missed-label">Problems to Practice</h3>
       <div class="missed-list" id="missed-list"></div>
     </div>
 
     <div class="summary-actions">
       <button class="btn-primary" id="btn-play-again">Play Again</button>
       <button class="btn-secondary" id="btn-change-level">Change Level</button>
+      <button class="btn-secondary" id="btn-go-home">Home</button>
     </div>
+  </div>
+</main>
+
+<!-- ===================== BADGES SCREEN ===================== -->
+<main id="screen-badges" class="screen">
+  <div class="badges-container">
+    <button class="btn-back" id="btn-badges-back" aria-label="Back to home">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+    </button>
+    <h2 class="badges-title">🏅 Badges</h2>
+    <div class="badges-grid" id="badges-grid"></div>
   </div>
 </main>
 
